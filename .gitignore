@@ -1,0 +1,15 @@
+*.duckdb
+*.pyc
+.claude/
+.env
+.venv/
+__pycache__/
+data/*.log
+data/cache/
+data/curated/
+data/raw/
+data/streamlit.log
+data/contests/
+
+# DFF projection exports: their product, not ours to redistribute.
+data/projections/
