@@ -43,7 +43,7 @@ Target mix: ~60% double-ups (cash), ~40% GPP.
                            opinion, and projected ownership. IMPORTED
     src/dfs/crosswalk.py   DK player -> nflverse gsis_id
     src/dfs/slates.py      assemble a slate: salaries + actual scores
-    src/dfs/features.py    87 features, pregame/lagged separation enforced
+    src/dfs/features.py    59 features, pregame/lagged separation enforced
     src/dfs/model.py       two-stage P(play) x points|play, LightGBM
     src/dfs/optimizer.py   MILP: optimize() classic, optimize_showdown()
                            single-game (1 CPT + 5 FLEX, captain 1.5x)
@@ -217,25 +217,48 @@ rediscover.
 
 `src/dfs/`, `data/` (cache, contests, curated, ownership, projections) and the
 git history were lost moving PCs. `src/dfs/` was rewritten from the tests,
-scripts, app.py and these docs; all 279 tests pass and
+scripts, app.py and these docs; all tests pass and
 `scripts/validate_scoring.py` reproduces 99.582% agreement with the same 68
-disagreements as the original. What differs from the numbers below:
+disagreements as the original. Retrained 2026-10-14 on 2021 through 2026
+week 4, paired against the baseline on identical weeks:
 
-- **Nothing is trained yet.** No `data/curated/*.parquet` exists; every
-  Status figure below is from the lost model and must be re-measured, paired.
+                         rebuilt              lost model
+    classic spearman     0.756 (92/92 wk)     0.798 (82/82)
+      baseline           0.611                0.702
+      lineup / of best   132.5 / 47.8%        128.4 / 46%
+      top-decile gap     +2.8%                +3.9%
+    showdown spearman    0.774 (106/106 wk)   0.810 (82/82)
+      of best            67.2%                67.8%
+      kickers            6.30 vs 6.51, 0.53   6.16 vs 6.49, 0.53
+
+The spearman gap is NOT settled as a weaker model: the baseline is 0.09
+lower too while lineup outcomes and calibration match or beat the original,
+which points at the rebuilt baseline and spearman population differing from
+the lost ones as much as at the features. Re-measure before concluding;
+every other Status figure below is still from the lost model.
+
+- **2022-23 IDP variants and two NHL Showdowns contaminated the first build.**
+  `dk_api.classify` now requires standard NFL positions (and "D" is not
+  DST); an IDP Classic slate has more players than the real main slate, so
+  "most players" picked it. Pinned in tests/test_slate_validation.py.
+- **`spread.py` and `correlations.py` are regenerated** (240 cells; QB/WR1
+  +0.265, DST/opp QB -0.274). Top decile covers 77.0% -> 80.5% held out.
+  `simulate.pit` must stay strictly inside (0, 1): one infinite normal
+  score made the first regenerated table come out with two cells.
 - **DraftKings salaries come from `lineup/getavailableplayers`.**
   `api.draftkings.com/.../draftables` returns 403 to this IP. The legacy
   endpoint serves historical draft groups too (verified back to id 56000),
   one row per player at FLEX price; captain salary is computed as 1.5x.
+  `scripts/backfill_salaries.py` is sequential at ~1.4 req/s, stops after 8
+  consecutive refusals and holds off idle sleep. The 2021-2026 sweep (10,518
+  NFL slates) drew no refusals at that pace.
 - **`features.py` is a re-implementation**: 59 features against the original
   87, same classes (lagged / pregame), same `_roll` semantics pinned by
-  tests/test_leakage.py. Expect different spearman.
-- **`spread.py` is empty and `correlations.py` is provisional** (six cells
-  copied from docs/MODELING.md). Regenerate both after
-  `build_simulation_inputs.py`: `calibrate_spread.py`, `correlations.py`.
+  tests/test_leakage.py.
 - Lost and unrecoverable: the twelve contest standings exports and the DFF
   files. `data/contest_fields.csv` and `observed_cash_lines.csv` survived.
-- Python 3.12 is required (3.15 has no duckdb wheel). Git is not installed.
+- Python 3.12 is required (3.15 has no duckdb wheel). Remote:
+  github.com/CSenhouse/dfs-dashboard (private).
 
 ## Status
 

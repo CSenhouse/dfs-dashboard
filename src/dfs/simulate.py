@@ -28,6 +28,7 @@ QCOLS = [f"q{int(round(a * 100)):02d}" for a in ALPHAS]
 PAYOUT = 2.0
 PAID_FRACTION = 0.435
 LINE_PCT = 100 * (1 - PAID_FRACTION)
+PIT_EPS = 1e-6
 
 _A = np.asarray(ALPHAS)
 
@@ -93,7 +94,7 @@ def _cdf_pair(x: np.ndarray, grid: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         return np.clip(a, knots_a[jj], knots_a[jj + 1])
 
     def right_tail() -> np.ndarray:
-        with np.errstate(divide="ignore", invalid="ignore"):
+        with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
             a = 1 - (1 - _A[-1]) * np.exp(-(x - grid[:, -1])
                                           / np.where(scale > 0, scale, 1.0))
         return np.where(scale > 0, a, 1.0)
@@ -123,7 +124,11 @@ def pit(scores: np.ndarray, grid: np.ndarray, p_play: np.ndarray,
     lower = p * gm + (1 - p) * (x > 0)
     upper = p * gp + (1 - p) * (x >= 0)
     r = np.random.default_rng(seed).random(x.size)
-    return np.clip(lower + r * (upper - lower), 0.0, 1.0)
+    # Strictly inside (0, 1). A score outside the predicted support -- a
+    # negative day against a grid that starts at zero -- would otherwise land
+    # on exactly 0 or 1, whose normal score is infinite, and one infinite row
+    # turns a whole correlation cell into NaN.
+    return np.clip(lower + r * (upper - lower), PIT_EPS, 1.0 - PIT_EPS)
 
 
 # --- roles and correlation ---------------------------------------------------

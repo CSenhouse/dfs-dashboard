@@ -94,6 +94,19 @@ def test_a_big_score_lands_high_and_a_zero_lands_low():
     assert got[1] > 0.95
 
 
+def test_a_score_outside_the_support_has_a_finite_normal_score():
+    """A negative day against a grid that starts at zero lands outside the
+    predicted support. Its PIT must stay strictly inside (0, 1): a PIT of
+    exactly 0 is an infinite normal score, and one of those made every
+    correlation cell it touched NaN -- the regenerated table came out with
+    two cells instead of dozens."""
+    g = np.repeat(grid_row(1, 3, 6, 9, 13, 18, 26), 2, axis=0)
+    flat = np.zeros_like(g)
+    u = simulate.pit(np.array([-2.0, 5.0]), np.vstack([g[:1], flat[:1]]),
+                     np.array([1.0, 1.0]), seed=7)
+    assert np.isfinite(stats.norm.ppf(u)).all()
+
+
 # --- roles and correlation --------------------------------------------------
 
 def test_roles_rank_by_projection_not_by_outcome():
