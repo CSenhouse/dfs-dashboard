@@ -110,6 +110,43 @@ def test_showdown_low_salaries_are_not_mistaken_for_ranks():
     assert classify(df)["kind"] == "showdown"
 
 
+def test_idp_slate_is_not_standard_nfl():
+    """DK ran Showdown and Classic variants that price defensive players.
+    Real teams, real DST, real schedule -- and a different game. An IDP
+    Classic slate has more players than the real main slate, so the "most
+    players" rule picked it as the week's main slate."""
+    df = slate(
+        ["QB", "RB", "WR", "TE", "DST", "LB", "CB"] * 2,
+        ["BUF", "MIA"] * 7,
+        [11000, 9000, 7000, 5000, 4000, 3000, 2000] * 2,
+        [1] * 14,
+    )
+    assert not classify(df)["is_nfl"]
+
+
+def test_a_classic_slate_with_kickers_is_a_variant():
+    df = slate(
+        ["QB", "RB", "WR", "TE", "DST", "K"] * 4,
+        ["BUF", "MIA", "NE", "NYJ"] * 6,
+        [7000, 6000, 5000, 4000, 3000, 4500] * 4,
+        [1, 1, 2, 2] * 6,
+    )
+    assert classify(df)["kind"] == "variant"
+
+
+def test_a_hockey_slate_is_not_nfl():
+    """NHL Showdowns use C/LW/RW/G/D, and WSH/PHI normalise to NFL teams. A
+    hockey defenseman ("D") was once mapped to DST, and Capitals at Flyers
+    sat on a week the Commanders played the Eagles -- it passed everything."""
+    df = slate(
+        ["C", "LW", "RW", "G", "D"] * 2,
+        ["WSH", "PHI"] * 5,
+        [9000, 8000, 7000, 10000, 6000] * 2,
+        [1] * 10,
+    )
+    assert not classify(df)["is_nfl"]
+
+
 def test_empty_slate_is_handled():
     info = classify(pd.DataFrame())
     assert info["kind"] == "empty"

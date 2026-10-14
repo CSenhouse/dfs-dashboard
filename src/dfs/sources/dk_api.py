@@ -42,6 +42,13 @@ CONTEST_TYPE_SHOWDOWN = 96
 # How long a live payload is trusted. Salaries and statuses move until lock.
 LIVE_MAX_AGE = 15 * 60
 
+# What DraftKings prices on a standard NFL salary-cap slate. IDP variants
+# (LB, CB, S, DE, DT) are a different game with different pricing, and a
+# Classic slate that prices kickers is a variant too. An IDP Classic slate
+# has MORE players than the real main slate, so "most players" picked it.
+CLASSIC_POSITIONS = frozenset({"QB", "RB", "WR", "TE", "DST"})
+SHOWDOWN_POSITIONS = CLASSIC_POSITIONS | {"K"}
+
 UNAVAILABLE = frozenset({"IR", "OUT", "O", "NA", "SUSP", "PUP", "DNP",
                          "INACTIVE", "NFI", "SUS", "EXEMPT", "RES"})
 
@@ -173,8 +180,10 @@ def draftables(dgid: int, *, cache_only: bool = False, refresh: bool = False,
         df["opponent"] = _opponents(df)
     else:
         df["opponent"] = normalize_team(df["opponent"])
+    # Not "D": that is a hockey defenseman, and mapping it made two NHL
+    # Showdowns look like NFL slates with a DST. DK writes DST for the NFL.
     df["position"] = df["position"].astype(str).str.upper().replace(
-        {"D": "DST", "DEF": "DST"})
+        {"DEF": "DST"})
     df["status"] = df["status"].where(df["status"].astype(str).str.strip()
                                       .ne(""), None)
     df["captain_salary"] = df["salary"] * CAPTAIN_MULTIPLIER
@@ -186,8 +195,10 @@ def draftables(dgid: int, *, cache_only: bool = False, refresh: bool = False,
 def classify(df: pd.DataFrame) -> dict:
     """What kind of draft group this is.
 
-    kind is one of empty / draft / classic / showdown. is_nfl requires a DST
-    (DK never prices a college DST) and every team to be an NFL team.
+    kind is one of empty / draft / variant / classic / showdown. is_nfl
+    requires a DST (DK never prices a college DST), every team to be an NFL
+    team, and only standard NFL positions -- a hockey slate and an IDP slate
+    both passed the first two checks.
     """
     if df is None or df.empty or "salary" not in df.columns:
         return {"kind": "empty", "is_nfl": False, "rank_like": False, "n": 0,
@@ -203,7 +214,8 @@ def classify(df: pd.DataFrame) -> dict:
         if "position" in df.columns else set()
     teams = set(normalize_team(df["team"]).dropna()) - {""} \
         if "team" in df.columns else set()
-    is_nfl = "DST" in positions and bool(teams) and teams <= NFL_TEAMS
+    is_nfl = ("DST" in positions and bool(teams) and teams <= NFL_TEAMS
+              and positions <= SHOWDOWN_POSITIONS)
 
     priced = sal[sal > 0]
     # A draft rank is a small integer that is not a multiple of $100. Real
@@ -214,8 +226,10 @@ def classify(df: pd.DataFrame) -> dict:
         kind = "draft"
     elif n_games == 1:
         kind = "showdown"
-    else:
+    elif positions <= CLASSIC_POSITIONS:
         kind = "classic"
+    else:
+        kind = "variant"
     return {"kind": kind, "is_nfl": bool(is_nfl), "rank_like": bool(rank_like),
             "n": n, "n_games": n_games, "start_time": start}
 

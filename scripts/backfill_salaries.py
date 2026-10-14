@@ -42,6 +42,19 @@ class Refused(RuntimeError):
     pass
 
 
+def stay_awake() -> None:
+    """Ask Windows not to idle-sleep while this process runs. A sweep is
+    hours long and was killed once by the PC sleeping at midnight; the hold
+    ends with the process and changes no power settings."""
+    try:
+        import ctypes
+        ES_CONTINUOUS, ES_SYSTEM_REQUIRED = 0x80000000, 0x00000001
+        ctypes.windll.kernel32.SetThreadExecutionState(
+            ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
+    except (AttributeError, OSError):
+        pass                        # not Windows
+
+
 _refusals = [0]
 
 
@@ -138,6 +151,7 @@ def main() -> int:
     ap.add_argument("--id-max", type=int, default=ID_MAX)
     ap.add_argument("--index-only", action="store_true")
     args = ap.parse_args()
+    stay_awake()
 
     try:
         index = build_date_index(args.id_min, args.id_max, args.step,
