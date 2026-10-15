@@ -998,8 +998,13 @@ with tab_sim:
                 "anything overstated."
             )
 
+            # x100 for display only: st.column_config formats are literal
+            # printf, so a fraction passed to "%.0f%%" prints 0.45 as "0%"
+            # (docs/MODELING.md 26). The metrics above still read fractions.
+            shown = table.drop(columns=["Players"]).copy()
+            shown[["Beats cash line", "Top 1%"]] *= 100.0
             st.dataframe(
-                table.drop(columns=["Players"]),
+                shown,
                 hide_index=True, width="stretch",
                 column_config={
                     "Proj": st.column_config.NumberColumn(
