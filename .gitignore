@@ -13,3 +13,6 @@ data/contests/
 
 # DFF projection exports: their product, not ours to redistribute.
 data/projections/
+
+# Personal DraftKings transaction history: financial records, never pushed.
+data/ledger/
