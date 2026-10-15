@@ -177,3 +177,62 @@ def test_pinning_a_captain_costs_1_5x_salary(slate):
 def test_an_unknown_captain_returns_nothing_rather_than_ignoring_it(slate):
     """Silently building someone else's lineup would be worse than failing."""
     assert optimize_showdown(slate, captain=-1) == []
+
+
+# --- construction rules ------------------------------------------------------
+# Tested on 1,416 finished slates (docs/MODELING.md 34). All off by default;
+# the dashboard turns them on per contest type.
+
+def qb_starved_slate() -> pd.DataFrame:
+    """Built so the unconstrained optimum has no QB and a WR captain, and
+    whichever QB enters would otherwise arrive alone."""
+    rows, pid = [], 0
+    for team, opp in (("BUF", "DET"), ("DET", "BUF")):
+        for pos, n, sal, proj in (("QB", 1, 9000, 12.0), ("WR", 4, 6000, 15.0),
+                                  ("RB", 3, 5000, 11.0), ("TE", 2, 3000, 4.0),
+                                  ("K", 1, 4000, 7.0)):
+            for _ in range(n):
+                pid += 1
+                rows.append({"player_dk_id": pid, "player_name": f"p{pid}",
+                             "position": pos, "team": team, "salary": float(sal),
+                             "projection": proj})
+    df = pd.DataFrame(rows)
+    df["captain_salary"] = df["salary"] * CAPTAIN_MULTIPLIER
+    return df
+
+
+def test_rules_are_off_by_default():
+    lu = optimize_showdown(qb_starved_slate(), n_lineups=1)[0]
+    assert (lu["position"] == "QB").sum() == 0, "fixture should tempt no QB"
+
+
+def test_min_qb_puts_a_quarterback_in():
+    lu = optimize_showdown(qb_starved_slate(), n_lineups=1, min_qb=1)[0]
+    assert (lu["position"] == "QB").sum() >= 1
+
+
+def test_qb_captain_rule():
+    lu = optimize_showdown(qb_starved_slate(), n_lineups=1, qb_captain=True)[0]
+    assert lu.loc[lu["slot"] == "CPT", "position"].iloc[0] == "QB"
+
+
+def test_a_pinned_captain_overrides_the_qb_captain_rule():
+    pool = qb_starved_slate()
+    wr = int(pool[pool["position"] == "WR"]["player_dk_id"].iloc[0])
+    lu = optimize_showdown(pool, captain=wr, qb_captain=True)[0]
+    assert int(lu.loc[lu["slot"] == "CPT", "player_dk_id"].iloc[0]) == wr
+
+
+def test_every_rostered_qb_has_his_own_receiver():
+    pool = qb_starved_slate()
+    for lu in optimize_showdown(pool, n_lineups=5, min_qb=1, qb_stack=1):
+        for _, qb in lu[lu["position"] == "QB"].iterrows():
+            mates = lu[(lu["team"] == qb["team"])
+                       & lu["position"].isin(["WR", "TE"])]
+            assert len(mates) >= 1
+
+
+def test_rules_are_skipped_when_there_is_no_quarterback(slate):
+    no_qb = slate[slate["position"] != "QB"]
+    assert optimize_showdown(no_qb, n_lineups=1, min_qb=1, qb_captain=True,
+                             qb_stack=1)

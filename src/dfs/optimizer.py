@@ -177,11 +177,25 @@ def optimize_showdown(pool: pd.DataFrame, objective: str = "projection",
                       min_difference: int = 1, max_exposure: float = 1.0,
                       locks: list[int] | None = None,
                       bans: list[int] | None = None, min_salary: int = 0,
-                      captain: int | None = None) -> list[pd.DataFrame]:
+                      captain: int | None = None, min_qb: int = 0,
+                      qb_captain: bool = False, qb_stack: int = 0
+                      ) -> list[pd.DataFrame]:
     """Up to `n_lineups` legal Showdown lineups: 1 CPT + 5 FLEX.
 
     `captain` pins a player to the Captain slot; an unknown id returns
     nothing rather than quietly building someone else's lineup.
+
+    Construction rules, all off by default and tested on 1,416 finished
+    slates (docs/MODELING.md 34):
+
+        min_qb      at least this many QBs (no-QB lineups cashed 35.7%
+                    against 44.9%)
+        qb_captain  the Captain is a QB (cash 45.9% against 41.6%); a
+                    pinned `captain` overrides it
+        qb_stack    every rostered QB has this many of his own WR/TE
+                    (a lonely QB reached the top 1% at 0.86% against 1.04%)
+
+    Each is skipped when the pool has no QB to satisfy it.
     """
     p = _clean(pool, objective)
     if p.empty:
@@ -197,9 +211,11 @@ def optimize_showdown(pool: pd.DataFrame, objective: str = "projection",
         csal = sal * CAPTAIN_MULTIPLIER
     val = p[objective].to_numpy(dtype=float)
     team = p["team"].astype(str).to_numpy()
+    pos = p["position"].astype(str).to_numpy()
     teams = sorted(set(team))
     locks, bans = set(locks or []), set(bans or [])
     cap = _exposure_cap(n_lineups, max_exposure)
+    qbs = [i for i in range(len(p)) if pos[i] == "QB"]
 
     n = len(p)
     idx = range(n)
@@ -226,6 +242,16 @@ def optimize_showdown(pool: pd.DataFrame, objective: str = "projection",
                 prob += pulp.lpSum(c[i] + f[i] for i in idx if team[i] == t) >= 1
         else:
             return []
+        if qbs:
+            if min_qb:
+                prob += pulp.lpSum(c[i] + f[i] for i in qbs) >= min_qb
+            if qb_captain and captain is None:
+                prob += pulp.lpSum(c[i] for i in qbs) == 1
+            if qb_stack:
+                for q in qbs:
+                    mates = [c[i] + f[i] for i in idx
+                             if team[i] == team[q] and pos[i] in STACK_WITH]
+                    prob += pulp.lpSum(mates) >= qb_stack * (c[q] + f[q])
         for i in idx:
             if ids[i] in bans:
                 prob += c[i] + f[i] == 0

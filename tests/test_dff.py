@@ -447,3 +447,22 @@ def test_binding_a_file_twice_does_not_stack_the_prefix(tmp_path, monkeypatch):
     b, _ = dff.save(a.name, raw, dgid=154478)
     assert a.name == b.name == dff.slate_prefix(154478) + "sheet.csv"
     assert len(list(tmp_path.glob("*.csv"))) == 1
+
+
+def test_a_file_bound_to_a_slate_is_used_even_if_it_covers_part_of_it(
+        tmp_path, monkeypatch):
+    """A Sunday sheet bound to a Thursday-Monday slate covers 20 of its 28
+    teams. The 80% coverage test exists to stop an UNRELATED week file being
+    applied; a file the user bound to this slate is partial on purpose, and
+    refusing it reported "no DFF export" while one sat in the folder."""
+    monkeypatch.setattr(dff, "DIR", tmp_path)
+    rows = [row("A%d" % i, "B%d" % i, "WR", t, o, 3000 + i * 100, 9.0)
+            for i in range(30) for t, o in (("CIN", "MIA"), ("MIA", "CIN"))]
+    dff.save("sunday.csv", (HEAD + "".join(rows)).encode("utf-8"), dgid=154940)
+    slate_teams = ["CIN", "MIA", "PIT", "CLE", "DAL", "PHI"]   # 2 of 6
+    got, why, src = dff.for_slate(154940, slate_teams)
+    assert why == "" and len(got) == 60
+    assert src.startswith(dff.slate_prefix(154940))
+    # The same file is still refused as an unbound week file for that slate.
+    unbound, why = dff.for_teams(slate_teams)
+    assert unbound.empty

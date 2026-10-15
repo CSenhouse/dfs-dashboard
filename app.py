@@ -168,6 +168,15 @@ def explanation(dgid: int, showdown: bool = False
     return model.explain(past, cur)
 
 
+# Showdown construction rules, tested on 1,416 finished slates
+# (docs/MODELING.md 34). Only rules with a clear measured effect are here:
+# two-QB builds and QB + opposing DST were NOT harmful, so neither is banned.
+SHOWDOWN_RULES = {
+    "proj_floor": dict(min_qb=1, qb_captain=True),      # cash
+    "proj_ceiling": dict(min_qb=1, qb_stack=1),         # tournament
+    "proj_mean": dict(min_qb=1),
+}
+
 N_SIMS = 4000
 N_FIELD = 1000
 
@@ -175,7 +184,8 @@ N_FIELD = 1000
 def build_lineups(pool: pd.DataFrame, showdown: bool, n: int, min_diff: int,
                   stack_n: int, min_salary: int, max_exposure: float,
                   locks: list[int], bans: list[int], back_n: int = 0,
-                  captain: int | None = None) -> list[pd.DataFrame]:
+                  captain: int | None = None,
+                  rules: dict | None = None) -> list[pd.DataFrame]:
     """One entry point for both formats, so the lineups shown and the lineups
     simulated cannot drift apart.
 
@@ -190,7 +200,7 @@ def build_lineups(pool: pd.DataFrame, showdown: bool, n: int, min_diff: int,
         return optimizer.optimize_showdown(
             pool, objective="projection", n_lineups=n, min_difference=min_diff,
             max_exposure=max_exposure, locks=locks, bans=bans,
-            min_salary=min_salary, captain=captain,
+            min_salary=min_salary, captain=captain, **(rules or {}),
         )
     return optimizer.optimize(
         pool, objective="projection", n_lineups=n, stack_qb_with=stack_n,
@@ -559,6 +569,7 @@ locks = [int(_label[n]) for n in lock_names if n in _label.index]
 bans = [int(_label[n]) for n in ban_names if n in _label.index]
 
 captain_id = None
+use_rules = False
 
 with st.sidebar.expander("More constraints"):
     min_proj = st.slider(
@@ -592,6 +603,17 @@ with st.sidebar.expander("More constraints"):
         )
     else:
         stack_n = back_n = 0
+        use_rules = st.toggle(
+            "Apply tested Showdown rules", value=True,
+            help="On: at least one QB in every lineup; a QB Captain in cash; "
+                 "in tournaments, every QB comes with one of his own WR/TE. "
+                 "Measured on 1,416 finished slates: no-QB lineups cashed "
+                 "35.7% vs 44.9%, QB Captains 45.9% vs 41.6%, and a QB with "
+                 "no receiver of his own reached the top 1% less often. "
+                 "Two-QB builds and QB + opposing DST are NOT banned -- "
+                 "two QBs was the best structure tested. A Captain you pin "
+                 "below overrides the QB-Captain rule.",
+        )
         # The Captain is the only Showdown control that matters, and it is not
         # a value decision: DK charges exactly 1.5x salary for 1.5x points, so
         # points per dollar is IDENTICAL there. What it buys is concentration
@@ -646,6 +668,9 @@ def apply_floor(df: pd.DataFrame, floor: float, showdown: bool) -> pd.DataFrame:
     return df[keep]
 
 
+sd_rules = (SHOWDOWN_RULES.get(CONTESTS[contest]["col"], {})
+            if is_showdown and use_rules else None)
+
 pool = apply_floor(cur, min_proj, is_showdown)
 # No projection, no automatic selection. A locked kicker is re-added below.
 pool = pool[pool["projection"].notna()]
@@ -668,7 +693,13 @@ if _dropped > 0:
 # position slots, captain at 1.5x points and 1.5x salary.
 built = build_lineups(pool, is_showdown, n_lineups,
                       CONTESTS[contest]["min_diff"], stack_n, min_salary,
-                      max_exposure, locks, bans, back_n, captain_id)
+                      max_exposure, locks, bans, back_n, captain_id, sd_rules)
+rules_dropped = False
+if not built and sd_rules:
+    built = build_lineups(pool, is_showdown, n_lineups,
+                          CONTESTS[contest]["min_diff"], stack_n, min_salary,
+                          max_exposure, locks, bans, back_n, captain_id)
+    rules_dropped = bool(built)
 
 tab_lu, tab_sim, tab_players, tab_adjust, tab_why, tab_slate, tab_chart = \
     st.tabs(["Lineups", "Lineup value", "All players", "Adjust projections",
@@ -730,6 +761,22 @@ with tab_lu:
                 "No legal lineup under the salary cap. Try relaxing the "
                 "constraints in the sidebar."
             )
+    if rules_dropped:
+        st.warning(
+            "Your locks or filters cannot be met together with the tested "
+            "Showdown rules, so these lineups were built WITHOUT them. Turn "
+            "the rules off in the sidebar to silence this, or relax a lock.",
+            icon=":material/warning:",
+        )
+    elif sd_rules:
+        st.caption(
+            "Tested Showdown rules applied: "
+            + ", ".join({"min_qb": "at least one QB",
+                         "qb_captain": "QB Captain",
+                         "qb_stack": "every QB with his own WR/TE"}[k]
+                        for k in sd_rules)
+            + ". Switch them off in the sidebar."
+        )
     if is_showdown:
         st.caption(
             "**Showdown rules:** 1 Captain + 5 FLEX, any positions, both "
@@ -866,7 +913,8 @@ with tab_sim:
         sim, opp = simulate_slate(sim_pool, is_showdown)
         cands = build_lineups(pool, is_showdown, n_candidates, 2, stack_n,
                               min_salary, max_exposure, locks, bans,
-                              back_n, captain_id)
+                              back_n, captain_id,
+                              None if rules_dropped else sd_rules)
         if not cands:
             st.warning("No legal lineup to simulate under these constraints.")
         else:

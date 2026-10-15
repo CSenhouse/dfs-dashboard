@@ -314,7 +314,8 @@ def for_date(date: str) -> tuple[pd.DataFrame, str]:
     return pd.DataFrame(), why or f"no rows for {date} in {len(files)} export(s)"
 
 
-def _for_teams_in(files: list[Path], teams: set[str]
+def _for_teams_in(files: list[Path], teams: set[str],
+                  min_coverage: float = MIN_TEAM_COVERAGE
                   ) -> tuple[pd.DataFrame, str]:
     why = ""
     for p in sorted(files, key=lambda x: x.stat().st_mtime, reverse=True):
@@ -326,7 +327,7 @@ def _for_teams_in(files: list[Path], teams: set[str]
         have = set(df["team"]) & teams
         if not have:
             continue
-        if len(have) / len(teams) < MIN_TEAM_COVERAGE:
+        if len(have) / len(teams) < min_coverage:
             why = (f"{p.name} covers {len(have)} of this slate's {len(teams)} "
                    "teams -- it is for a different slate")
             continue
@@ -355,10 +356,18 @@ def for_slate(dgid: int, teams) -> tuple[pd.DataFrame, str, str]:
     file covering its teams is the fallback."""
     want = set(_team(pd.Series(list(teams))))
     bound = [p for p in available() if p.name.startswith(slate_prefix(dgid))]
+    bound_why = ""
     if bound:
         newest = max(bound, key=lambda x: x.stat().st_mtime)
-        df, why = _for_teams_in([newest], want)
+        # Bound by the user to THIS slate, so no coverage test: the coverage
+        # test exists to stop an unrelated week file being applied, and a
+        # Sunday sheet bound to a Thu-Mon slate is partial on purpose. The
+        # caption reports how many players it actually reached.
+        df, bound_why = _for_teams_in([newest], want, min_coverage=0.0)
         if not df.empty:
             return df, "", newest.name
+        bound_why = f"{newest.name}: {bound_why}" if bound_why else ""
     df, why = for_teams(teams)
+    if df.empty and bound_why:
+        why = bound_why
     return df, why, ("a week file" if not df.empty else "")
