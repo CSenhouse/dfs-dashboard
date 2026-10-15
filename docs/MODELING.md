@@ -1579,3 +1579,36 @@ Measured on the live TB at DAL Showdown with only the week file present: 30
 rows, 30 matched, 28 of them through the cross-format name pass and 2 through
 salary by coincidence. With a per-slate file the salary pass should do all of
 it, which is both faster to verify and harder to get wrong.
+
+## 34. Showdown construction rules, tested on outcomes (rebuild, 2026-10-15)
+
+A list of popular Showdown "core principles" was checked with
+`scripts/showdown_rules.py`: for each of 1,416 finished slates, 3,000
+lineups sampled the way the field drafts (walk-forward projections), scored
+on what happened, tagged by structure, and compared with and without each
+structure on the same slates (Wilcoxon, paired by slate).
+
+    structure                share   cash with/without    top-1% with/without
+    two QBs                  27.0%     49.6% / 41.4%        1.63% / 0.91%
+    QB + opposing DST        10.0%     45.2% / 43.3%        1.23% / 0.98% (p=.09)
+    two TEs                  12.7%     42.6% / 44.1%        1.31% / 1.04%
+    lonely QB (no own WR/TE) 10.0%     42.8% / 43.7%        0.86% / 1.04%
+    QB stacked with WR/TE    46.6%     43.4% / 43.3%        1.12% / 0.96%
+    no QB at all             17.2%     35.7% / 44.9%        0.64% / 1.10%
+    QB captain               31.8%     45.9% / 41.6%        0.89% / 1.04%
+    TE captain                6.4%     40.0% / 43.8%        1.25% / 1.00%
+    kicker in lineup         31.0%     47.0% / 41.9%        1.35% / 0.85%
+
+"Ban dual-QB builds" is backwards: two quarterbacks is the best structure
+measured, for cash and for the tail. The two are positively coupled (the
+regenerated copula has opposing QBs at +0.14) and are the steadiest scorers
+in one game. "Never pair a QB with the opposing DST" shows no cost -- the
+-0.27 coupling narrows a lineup, which a double-up does not mind. Stacking a
+QB with his own receivers buys tail and is neutral for cash, matching the
+Classic finding in section 25. Captain choice splits by format: QB captain
+for cash, TE captain for the tail.
+
+The field is modelled, not counted, and structures are not randomly
+assigned (two-QB lineups also differ in salary and in who fits beside
+them), so these are associations over 1,400 slates rather than controlled
+experiments. Re-run on counted standings exports when they exist.
