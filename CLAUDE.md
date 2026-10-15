@@ -225,7 +225,7 @@ week 4, paired against the baseline on identical weeks:
                          rebuilt              lost model
     classic spearman     0.756 (92/92 wk)     0.798 (82/82)
       baseline           0.611                0.702
-      lineup / of best   132.5 / 47.8%        128.4 / 46%
+      lineup / of best   129.1 / 46.6%        128.4 / 46%
       top-decile gap     +2.8%                +3.9%
     showdown spearman    0.774 (106/106 wk)   0.810 (82/82)
       of best            67.2%                67.8%

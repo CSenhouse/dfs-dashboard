@@ -44,7 +44,8 @@ FEATURES = (
     ["salary", "salary_pct", "salary_team_rank", "value"]
     + [f"pos_{p}" for p in POSITIONS]
     + ["is_home", "spread", "game_total", "implied_total",
-       "opp_implied_total", "temp", "wind", "dome", "rest_days", "div_game"]
+       "opp_implied_total", "temp", "wind", "is_dome", "rest_days",
+       "div_game"]
     + [f"{c}_r{w}" for c in ROLL_COLS for w in WINDOWS
        if not (w == 6 and c in SHORT_ONLY)]
     + ["weeks_since_played"]
@@ -418,10 +419,12 @@ def build(df: pd.DataFrame, salary_within_slate: bool = False,
         f["opponent"] = f["opponent"].where(f["opponent"].notna()
                                             & (f["opponent"] != ""),
                                             f["_sched_opp"])
-    f["spread"] = -f["margin"]
+    # The team's expected margin: POSITIVE when favoured, the opposite of how
+    # a sportsbook prints it. app.py negates it for display.
+    f["spread"] = f["margin"]
     f["implied_total"] = (f["game_total"] + f["margin"]) / 2
     f["opp_implied_total"] = (f["game_total"] - f["margin"]) / 2
-    f["dome"] = f["roof"].isin(["dome", "closed"]).astype(float)
+    f["is_dome"] = f["roof"].isin(["dome", "closed"]).astype(float)
     f = f.drop(columns=["_sched_opp", "margin", "roof"])
 
     # Player history: lagged.
