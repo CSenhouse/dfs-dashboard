@@ -24,7 +24,7 @@ from dfs import (backtest, cash_lines, contest_ev, features,  # noqa: E402
                  model, optimizer, overrides, simulate, slates)
 from dfs.config import CURATED, SALARY_CAP  # noqa: E402
 from dfs.optimizer import SHOWDOWN_SIZE  # noqa: E402
-from dfs.sources import dff, dk_api  # noqa: E402
+from dfs.sources import dff, dk_api, nflverse  # noqa: E402
 
 st.set_page_config(page_title="DFS Dashboard", page_icon="🏈", layout="wide")
 
@@ -286,6 +286,23 @@ def real_fields(showdown: bool = False) -> pd.DataFrame:
 def ruled_out(dgid: int) -> pd.DataFrame:
     """Players DraftKings flags as unable to play (IR, OUT, suspended)."""
     return dk_api.unavailable(dk_api.draftables(dgid))
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def team_logos() -> dict[str, str]:
+    """Team -> logo URL (nflverse's team table). Display only."""
+    try:
+        return nflverse.team_logos()
+    except Exception:  # noqa: BLE001 -- a missing logo must never break a page
+        return {}
+
+
+def with_logo(df: pd.DataFrame) -> pd.DataFrame:
+    """Add a `logo` column from `team`."""
+    return df.assign(logo=df["team"].astype(str).map(team_logos()))
+
+
+LOGO = st.column_config.ImageColumn(" ", width="small")
 
 
 # --- sidebar ----------------------------------------------------------------
@@ -803,9 +820,9 @@ with tab_lu:
     for lu in built:
         if is_showdown:
             lu = lu.sort_values("slot")  # CPT before FLEX
-            cols = ["slot", "player_name", "position", "team",
+            cols = ["slot", "logo", "player_name", "position", "team",
                     "lineup_salary", "lineup_points"]
-            names = {"slot": "Slot", "player_name": "Player",
+            names = {"slot": "Slot", "logo": " ", "player_name": "Player",
                      "position": "Pos", "team": "Team",
                      "lineup_salary": "Salary", "lineup_points": "Proj"}
             spend, points = lu["lineup_salary"].sum(), lu["lineup_points"].sum()
@@ -816,9 +833,9 @@ with tab_lu:
             # copy of Floor, Expected or Ceiling depending on the contest --
             # invisible in cash mode, and in GPP it printed every ceiling
             # twice.
-            cols = ["position", "player_name", "team", "salary",
+            cols = ["position", "logo", "player_name", "team", "salary",
                     "proj_floor", "proj_mean", "proj_ceiling"]
-            names = {"position": "Pos", "player_name": "Player",
+            names = {"position": "Pos", "logo": " ", "player_name": "Player",
                      "team": "Team", "salary": "Salary",
                      "proj_floor": "Floor", "proj_mean": "Expected",
                      "proj_ceiling": "Ceiling"}
@@ -827,9 +844,10 @@ with tab_lu:
         st.subheader(f"Lineup {int(lu['lineup'].iloc[0]) + 1}")
         a, b = st.columns([3, 1])
         a.dataframe(
-            lu[cols].rename(columns=names),
+            with_logo(lu)[cols].rename(columns=names),
             hide_index=True, width="stretch",
             column_config={
+                " ": LOGO,
                 "Salary": st.column_config.NumberColumn(format="$%d"),
                 "Floor": st.column_config.NumberColumn(format="%.1f"),
                 "Expected": st.column_config.NumberColumn(format="%.1f"),
@@ -1153,11 +1171,12 @@ with tab_players:
         "shape of a player's range rather than one number from it. "
         "**Pts/$1k** is value against that same view."
     )
-    view = cur[cur["position"].isin(pos)].nlargest(300, "projection")
+    view = with_logo(cur[cur["position"].isin(pos)].nlargest(300, "projection"))
     st.dataframe(
-        view[["player_name", "position", "team", "salary",
+        view[["logo", "player_name", "position", "team", "salary",
               "proj_floor", "proj_mean", "proj_ceiling", "p_play",
               "pts_per_1k"]].rename(columns={
+                  "logo": " ",
                   "player_name": "Player", "position": "Pos", "team": "Team",
                   "salary": "Salary",
                   "proj_floor": "Floor", "proj_mean": "Expected",
@@ -1165,6 +1184,7 @@ with tab_players:
                   "pts_per_1k": "Pts/$1k"}),
         hide_index=True, width="stretch", height=600,
         column_config={
+            " ": LOGO,
             "Salary": st.column_config.NumberColumn(format="$%d"),
             "Floor": st.column_config.NumberColumn(format="%.1f"),
             "Expected": st.column_config.NumberColumn(format="%.1f"),
@@ -1214,6 +1234,7 @@ with tab_adjust:
     # what the optimizer is using, and setting it back to Model removes the
     # override.
     _grid = pd.DataFrame({
+        " ": _base["team"].astype(str).map(team_logos()).to_numpy(),
         "Player": _base["player_name"].to_numpy(),
         "Pos": _base["position"].to_numpy(),
         "Team": _base["team"].to_numpy(),
@@ -1225,8 +1246,9 @@ with tab_adjust:
     _done = st.data_editor(
         _grid, hide_index=True, width="stretch", height=520,
         key=f"adjust_{dgid}_{_view_col}",
-        disabled=["Player", "Pos", "Team", "Salary", "Model"],
+        disabled=[" ", "Player", "Pos", "Team", "Salary", "Model"],
         column_config={
+            " ": LOGO,
             "Salary": st.column_config.NumberColumn(format="$%d"),
             "Model": st.column_config.NumberColumn(
                 format="%.2f", help="What the model projects, unedited."),
@@ -1455,12 +1477,14 @@ with tab_slate:
                   if pd.notna(r["temp"]) else "-"),
             axis=1,
         )
-        cols = ["team", "opponent", "implied", "opp_implied", "total",
+        show = with_logo(show)
+        cols = ["logo", "team", "opponent", "implied", "opp_implied", "total",
                 "spread", "weather", "priced", "best"]
         if "in_lineups" in show.columns:
             cols.append("in_lineups")
         st.dataframe(
             show[cols].rename(columns={
+                "logo": " ",
                 "team": "Team", "opponent": "Opp", "implied": "Implied",
                 "opp_implied": "Opp implied", "total": "Game total",
                 "spread": "Spread", "weather": "Weather",
@@ -1468,6 +1492,7 @@ with tab_slate:
                 "in_lineups": "In your lineups"}),
             hide_index=True, width="stretch", height=560,
             column_config={
+                " ": LOGO,
                 "Implied": st.column_config.NumberColumn(format="%.1f"),
                 "Opp implied": st.column_config.NumberColumn(format="%.1f"),
                 "Game total": st.column_config.NumberColumn(format="%.1f"),

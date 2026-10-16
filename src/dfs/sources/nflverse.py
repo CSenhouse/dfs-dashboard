@@ -155,3 +155,25 @@ def pbp(season: int, columns: list[str] | None = None,
     if df.empty:
         return df
     return df[[c for c in cols if c in df.columns]]
+
+
+# --- team logos -----------------------------------------------------------------
+
+TEAMS = f"{RELEASE}/teams/teams_colors_logos.csv"
+
+
+def team_logos(cache_only: bool = False) -> dict[str, str]:
+    """Team abbreviation -> logo image URL, for display only. Refreshed
+    monthly; a team table changes about once a decade."""
+    body = http.get(TEAMS, ".csv", min_interval=0, max_age=30 * 86400,
+                    cache_only=cache_only)
+    if not body:
+        return {}
+    df = pd.read_csv(io.BytesIO(body))
+    logos = dict(zip(df["team_abbr"], df["team_logo_espn"]))
+    # Old codes the archive still uses, and the codes DraftKings writes.
+    for old, new in (("OAK", "LV"), ("SD", "LAC"), ("STL", "LA"),
+                     ("LAR", "LA"), ("WSH", "WAS"), ("JAC", "JAX")):
+        if new in logos:
+            logos.setdefault(old, logos[new])
+    return logos
