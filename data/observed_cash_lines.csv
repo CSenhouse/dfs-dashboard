@@ -10,3 +10,4 @@ season,week,games,kind,paid_pct,line,draft_group,contest_id,contest,entries,entr
 2026,4,12,classic,0.4347,108.2,154078,196169758,double-up 3448-cap,3448,,"paid count from the gamecenter: rank 1499 scored 108.18"
 2026,4,12,classic,0.4307,106.1,154078,196169760,double-up 2758-cap,2758,,"paid count from the gamecenter: rank 1188 scored 106.08"
 2026,4,12,classic,0.4352,105.7,154078,196169761,double-up 2298-cap,2298,,"paid count from the gamecenter: rank 1000 scored 105.70"
+2026,6,1,showdown,0.4355,85.5,154947,196688500,$1 Showdown Double Up (SEA @ DEN),62,1,"paid count INFERRED as 27 of 62 (43.5%); ranks 9-35 are a 27-way tie at 85.50, the chalk lineup (JSN CPT, Darnold, Nix, Myers, Barner, Shaheed), so the line falls inside it. JSN was captain on 92% of entries"
