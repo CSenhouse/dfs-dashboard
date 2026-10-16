@@ -1612,3 +1612,14 @@ The field is modelled, not counted, and structures are not randomly
 assigned (two-QB lineups also differ in salary and in who fits beside
 them), so these are associations over 1,400 slates rather than controlled
 experiments. Re-run on counted standings exports when they exist.
+
+**Addendum, first real field (2026-10-16).** SEA @ DEN, contest 196688500, a
+62-entry $1 double-up: 27 entries (44%) submitted one identical lineup, JSN
+captain on 92% of rosters, and that block scored 85.50 -- exactly the cash
+line, which fell inside the tie. Our entry followed the QB-captain rule
+(Darnold) and scored 68.31, 61st of 62; the captain choice alone cost 7.7.
+The test above measured lineups against a modelled field, and real Showdown
+double-ups converge far harder than that model (section 23), so a captain
+that differs from the field's is a bet against the chalk that a double-up
+does not reward. QB captain is no longer a dashboard default. One game; the
+two-QB, stacking and no-QB findings are unaffected.

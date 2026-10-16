@@ -171,8 +171,14 @@ def explanation(dgid: int, showdown: bool = False
 # Showdown construction rules, tested on 1,416 finished slates
 # (docs/MODELING.md 34). Only rules with a clear measured effect are here:
 # two-QB builds and QB + opposing DST were NOT harmful, so neither is banned.
+# QB Captain was a cash default until the first real field contradicted it:
+# on SEA @ DEN (contest 196688500) 92% of a 62-entry double-up captained JSN
+# and the chalk block WAS the cash line, so a QB Captain was a bet against
+# the field that a double-up does not pay for. The outcome test behind it
+# used a modelled field that converges far less than real ones. Still
+# available as optimizer.optimize_showdown(qb_captain=True).
 SHOWDOWN_RULES = {
-    "proj_floor": dict(min_qb=1, qb_captain=True),      # cash
+    "proj_floor": dict(min_qb=1),                       # cash
     "proj_ceiling": dict(min_qb=1, qb_stack=1),         # tournament
     "proj_mean": dict(min_qb=1),
 }
@@ -605,14 +611,14 @@ with st.sidebar.expander("More constraints"):
         stack_n = back_n = 0
         use_rules = st.toggle(
             "Apply tested Showdown rules", value=True,
-            help="On: at least one QB in every lineup; a QB Captain in cash; "
-                 "in tournaments, every QB comes with one of his own WR/TE. "
-                 "Measured on 1,416 finished slates: no-QB lineups cashed "
-                 "35.7% vs 44.9%, QB Captains 45.9% vs 41.6%, and a QB with "
-                 "no receiver of his own reached the top 1% less often. "
-                 "Two-QB builds and QB + opposing DST are NOT banned -- "
-                 "two QBs was the best structure tested. A Captain you pin "
-                 "below overrides the QB-Captain rule.",
+            help="On: at least one QB in every lineup; in tournaments, "
+                 "every QB comes with one of his own WR/TE. Measured on 1,416 "
+                 "finished slates: no-QB lineups cashed 35.7% vs 44.9%, and a "
+                 "QB with no receiver of his own reached the top 1% less "
+                 "often. Two-QB builds and QB + opposing DST are NOT banned "
+                 "-- two QBs was the best structure tested. The Captain is "
+                 "left to the optimizer: in a converged double-up, check who "
+                 "the field's obvious Captain is before choosing another.",
         )
         # The Captain is the only Showdown control that matters, and it is not
         # a value decision: DK charges exactly 1.5x salary for 1.5x points, so
