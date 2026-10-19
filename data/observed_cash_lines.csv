@@ -11,3 +11,5 @@ season,week,games,kind,paid_pct,line,draft_group,contest_id,contest,entries,entr
 2026,4,12,classic,0.4307,106.1,154078,196169760,double-up 2758-cap,2758,,"paid count from the gamecenter: rank 1188 scored 106.08"
 2026,4,12,classic,0.4352,105.7,154078,196169761,double-up 2298-cap,2298,,"paid count from the gamecenter: rank 1000 scored 105.70"
 2026,6,1,showdown,0.4355,85.5,154947,196688500,$1 Showdown Double Up (SEA @ DEN),62,1,"paid count INFERRED as 27 of 62 (43.5%); ranks 9-35 are a 27-way tie at 85.50, the chalk lineup (JSN CPT, Darnold, Nix, Myers, Barner, Shaheed), so the line falls inside it. JSN was captain on 92% of entries"
+2026,6,10,classic,0.2537,140.0,154941,196672043,NFL $15K Pylon [Single Entry],5945,3,"paid count INFERRED as 1508 (25.37%, matching the $20K Pylon); our GPP lineup 1 (Shough/J.Johnson, Likely bring-back) scored 122.16, rank 3426"
+2026,6,10,classic,0.2590,138.7,154941,196672044,NFL $10K Daily Dollar [Single Entry],11890,1,"paid count 3080 from the week 4 Daily Dollar with the same cap; our GPP lineup B (Penix/London, Swift bring-back) scored 145.80, rank 1997, CASHED"
