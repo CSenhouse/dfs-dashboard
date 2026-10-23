@@ -59,15 +59,25 @@ COLUMNS = ["draft_group_id", "player_dk_id", "draftable_id", "player_name",
 _DATE = re.compile(r"/Date\((-?\d+)\)/")
 
 
-def _ms(value) -> pd.Timestamp:
+def _ms(value, eastern: bool = False) -> pd.Timestamp:
+    """A DraftKings timestamp. The legacy endpoint writes Eastern WALL-CLOCK
+    time as if it were UTC (a 1:00 PM ET kickoff arrives as 13:00Z), so
+    `eastern=True` re-reads it in America/New_York. Read as UTC it put every
+    game four hours early, and a slate looked started at 9 AM -- which
+    stopped the live refresh before Sunday's inactives landed."""
     if value is None:
         return pd.NaT
     if isinstance(value, (int, float)):
-        return pd.to_datetime(int(value), unit="ms", utc=True)
-    m = _DATE.search(str(value))
-    if m:
-        return pd.to_datetime(int(m.group(1)), unit="ms", utc=True)
-    return pd.to_datetime(value, utc=True, errors="coerce")
+        ts = pd.to_datetime(int(value), unit="ms")
+    else:
+        m = _DATE.search(str(value))
+        if not m:
+            return pd.to_datetime(value, utc=True, errors="coerce")
+        ts = pd.to_datetime(int(m.group(1)), unit="ms")
+    if eastern:
+        return ts.tz_localize("America/New_York", ambiguous=True,
+                              nonexistent="shift_forward").tz_convert("UTC")
+    return ts.tz_localize("UTC")
 
 
 def _from_legacy(dgid: int, payload: dict) -> pd.DataFrame:
@@ -82,7 +92,8 @@ def _from_legacy(dgid: int, payload: dict) -> pd.DataFrame:
         team = home if tid == htid else away
         opp = away if tid == htid else home
         g = games.get(str(p.get("tsid")), {})
-        start = _ms(g.get("tz")) if g.get("tz") else _ms(p.get("dgst"))
+        start = (_ms(g.get("tz"), eastern=True) if g.get("tz")
+                 else _ms(p.get("dgst"), eastern=True))
         first, last = (p.get("fn") or "").strip(), (p.get("ln") or "").strip()
         rows.append({
             "draft_group_id": int(dgid),

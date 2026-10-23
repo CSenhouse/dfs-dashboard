@@ -220,3 +220,23 @@ def test_unambiguous_name_does_match():
     hit = _attempt(dk, roster, ["season", "team", "position", "key_name"], "t")
     assert len(hit) == 1
     assert hit["gsis_id"].iloc[0] == "00-0031381"
+
+
+def test_legacy_kickoff_times_are_eastern_wall_clock():
+    """DK's legacy endpoint writes Eastern wall-clock as if it were UTC. Read
+    as UTC, every game sat four hours early and a 1 PM slate looked started at
+    9 AM, which stopped the live status refresh before inactives landed."""
+    from dfs.sources.dk_api import _from_legacy
+
+    # 1:00 PM ET on 2026-10-25, encoded the way DK does: as 13:00 "UTC".
+    raw = int(pd.Timestamp("2026-10-25 13:00", tz="UTC").timestamp() * 1000)
+    payload = {
+        "playerList": [{"pid": 1, "pdkid": 1, "fn": "A", "ln": "B", "pn": "QB",
+                        "tid": 10, "htid": 10, "atid": 20, "htabbr": "MIN",
+                        "atabbr": "IND", "s": 6000, "i": "", "tsid": 7,
+                        "dgst": raw}],
+        "teamList": {"7": {"ht": "MIN", "at": "IND", "tz": f"/Date({raw})/"}},
+    }
+    got = _from_legacy(1, payload)["start_time"].iloc[0]
+    assert got == pd.Timestamp("2026-10-25 17:00", tz="UTC")
+    assert got.tz_convert("America/New_York").hour == 13
