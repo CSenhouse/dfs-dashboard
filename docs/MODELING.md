@@ -1623,3 +1623,24 @@ double-ups converge far harder than that model (section 23), so a captain
 that differs from the field's is a bet against the chalk that a double-up
 does not reward. QB captain is no longer a dashboard default. One game; the
 two-QB, stacking and no-QB findings are unaffected.
+
+## 35. Model, DFF and the blend, ranked on a finished slate (rebuild, 2026-10-23)
+
+`scripts/benchmark.py 154941` on the 2026 week 6 main slate, with the DFF
+export uploaded before lock (265 matched players, scored on what happened):
+
+    our model          spearman +0.697
+    DFF                spearman +0.701
+    the two averaged   spearman +0.721
+    salary alone       spearman +0.528
+
+    DFF after ours is removed   +0.205 (p=0.0008)
+    ours after DFF is removed   +0.175 (p=0.0044)
+
+The rebuilt model ranks players as well as a paid service, and the two are
+partly independent opinions -- each keeps significant signal once the other
+is removed from both sides -- which is the condition under which an average
+beats either. The dashboard's Blend 50/50 is therefore the default to prefer.
+One slate; the lineup-level tracker (`scripts/track_methods.py`) had model
+ahead in cash and blend ahead in GPP the same week, which one lineup per
+format cannot resolve. Re-run each week on the slate the DFF file is bound to.
