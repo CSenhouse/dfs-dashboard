@@ -44,7 +44,8 @@ Target mix: ~60% double-ups (cash), ~40% GPP.
     src/dfs/crosswalk.py   DK player -> nflverse gsis_id
     src/dfs/slates.py      assemble a slate: salaries + actual scores
     src/dfs/features.py    59 features, pregame/lagged separation enforced
-    src/dfs/model.py       two-stage P(play) x points|play, LightGBM
+    src/dfs/model.py       two-stage P(play) x points|play, scikit-learn
+                           HistGradientBoosting (was LightGBM; see below)
     src/dfs/optimizer.py   MILP: optimize() classic, optimize_showdown()
                            single-game (1 CPT + 5 FLEX, captain 1.5x)
     src/dfs/backtest.py    walk-forward, accuracy, calibration, lineup results
@@ -72,8 +73,8 @@ rediscover.
    point weekly standard deviation. It has given a misleading answer three
    times, including flipping sign between a one-season and a two-season run.
    Use `scripts/compare.py` or `scripts/ablate.py`, which test pairwise on
-   identical weeks. LightGBM is seeded for this reason -- do not remove the
-   seeds.
+   identical weeks. The boosting models are seeded for this reason -- do not
+   remove the seeds.
 
 3. **Select models on accuracy, not lineup scores.** Spearman has never given
    a wrong answer here; lineup means have. Validate on lineups only with many
@@ -257,6 +258,18 @@ every other Status figure below is still from the lost model.
   tests/test_leakage.py.
 - Lost and unrecoverable: the twelve contest standings exports and the DFF
   files. `data/contest_fields.csv` and `observed_cash_lines.csv` survived.
+- **The model runs on scikit-learn's HistGradientBoosting, not LightGBM.**
+  Windows Smart App Control began enforcing on 2026-10-25 and blocks
+  LightGBM's unsigned `lib_lightgbm.dll`; turning SAC off is permanent, so the
+  engine was swapped instead. Paired over 92 identical weeks: spearman 0.7562
+  vs 0.7563 (p=0.72), top-decile gap unchanged at +2.8%, Showdown 0.7745. The
+  lineup mean came out 5.1 lower (p=0.05) -- inside the 128.8-132.5 range
+  LightGBM itself showed on the same weeks across trivial changes, so treated
+  as noise per rule 3, but re-check it. "Why this projection" now uses an
+  exactly additive replace-one-feature attribution (forward and reverse
+  order averaged) in place of TreeSHAP; `importance` is mean |contribution|.
+  If any other native wheel is ever blocked, check SAC first:
+  HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy VerifiedAndReputablePolicyState.
 - Python 3.12 is required (3.15 has no duckdb wheel). Remote:
   github.com/CSenhouse/dfs-dashboard (private).
 

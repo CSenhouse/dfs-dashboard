@@ -1,4 +1,4 @@
-"""Two-stage projection: P(plays) x E[points | plays], LightGBM.
+"""Two-stage projection: P(plays) x E[points | plays], gradient boosting.
 
 54% of players priced on a main slate never record a stat line. A single
 regression has to learn "will he play" and "how much" through one head and
@@ -9,17 +9,22 @@ Distributional views come from quantile regressors on the same rows: the
 floor (q30) for cash, the ceiling (q85) for tournaments, and a full grid for
 the simulator. All views share ONE participation estimate.
 
-LightGBM is seeded and deterministic (rule 2): comparisons are paired, and an
-unseeded model would make them measure noise.
+The boosting is scikit-learn's HistGradientBoosting. It was LightGBM until
+Windows Smart App Control began enforcing (2026-10-25) and blocked LightGBM's
+unsigned native library; scikit-learn's histogram boosting is the same family
+-- binned features, leaf-wise trees, native missing-value handling, quantile
+loss -- and loads under that policy. It is seeded (rule 2): comparisons are
+paired, and an unseeded model would make them measure noise.
 """
 from __future__ import annotations
 
 import re
 import warnings
 
-import lightgbm as lgb
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import (HistGradientBoostingClassifier,
+                              HistGradientBoostingRegressor)
 from sklearn.isotonic import IsotonicRegression
 
 from dfs.features import feature_columns
@@ -29,10 +34,9 @@ SEED = 0
 MIN_ROWS = 100           # played rows needed to fit anything
 FLOOR_Q, CEILING_Q = 0.30, 0.85
 
-BASE = dict(n_estimators=300, learning_rate=0.05, num_leaves=31,
-            min_child_samples=30, subsample=0.8, subsample_freq=1,
-            colsample_bytree=0.8, reg_lambda=1.0, random_state=SEED,
-            deterministic=True, force_row_wise=True, n_jobs=4, verbose=-1)
+BASE = dict(max_iter=300, learning_rate=0.05, max_leaf_nodes=31,
+            min_samples_leaf=30, l2_regularization=1.0, max_features=0.8,
+            early_stopping=False, random_state=SEED)
 
 warnings.filterwarnings("ignore", message=".*X does not have valid feature names.*")
 
@@ -56,14 +60,17 @@ def _enough(past: pd.DataFrame) -> bool:
 
 
 def _classifier(past, cols):
-    clf = lgb.LGBMClassifier(**BASE)
+    clf = HistGradientBoostingClassifier(**BASE)
     clf.fit(_X(past, cols), past["played"].astype(int))
     return clf
 
 
-def _regressor(past, cols, **kw):
+def _regressor(past, cols, quantile: float | None = None):
+    """The conditional points model; `quantile=a` fits that quantile."""
     rows = past[past["played"].astype(bool)]
-    reg = lgb.LGBMRegressor(**{**BASE, **kw})
+    extra = ({"loss": "quantile", "quantile": quantile}
+             if quantile is not None else {})
+    reg = HistGradientBoostingRegressor(**{**BASE, **extra})
     reg.fit(_X(rows, cols), rows["dk_scored"].astype(float))
     return reg
 
@@ -74,8 +81,8 @@ def _p_play(clf, cur, cols) -> np.ndarray:
 
 def _quantiles(past, cur, cols, alphas) -> np.ndarray:
     out = np.column_stack([
-        _regressor(past, cols, objective="quantile", alpha=a).predict(
-            _X(cur, cols)) for a in alphas])
+        _regressor(past, cols, quantile=a).predict(_X(cur, cols))
+        for a in alphas])
     return np.maximum.accumulate(np.clip(out, 0.0, None), axis=1)
 
 
@@ -117,7 +124,7 @@ def single_stage(past, cur, exclude=()) -> pd.Series:
     if not _enough(past):
         return _empty(cur)
     cols = _cols(past, exclude)
-    reg = lgb.LGBMRegressor(**BASE)
+    reg = HistGradientBoostingRegressor(**BASE)
     reg.fit(_X(past, cols), past["dk_scored"].astype(float))
     return pd.Series(np.clip(reg.predict(_X(cur, cols)), 0, None),
                      index=cur.index)
@@ -196,6 +203,33 @@ def quantile_grid(past: pd.DataFrame, cur: pd.DataFrame) -> pd.DataFrame:
 
 # --- explanation ---------------------------------------------------------------
 
+def _contributions(reg, X: pd.DataFrame, reference: pd.Series
+                   ) -> tuple[np.ndarray, np.ndarray]:
+    """(per-feature contributions, baseline), exactly additive.
+
+    Start every row from a reference player (the training medians) and swap
+    in one real feature value at a time, crediting each feature with the
+    change in prediction. The steps telescope, so contributions plus the
+    baseline equal the prediction exactly. The credit depends on the order,
+    so it is averaged over the forward and the reverse order -- still exact,
+    because each order is.
+    """
+    n, k = X.shape
+    ref = np.tile(reference.to_numpy(dtype=float), (n, 1))
+    real = X.to_numpy(dtype=float)
+    base = reg.predict(pd.DataFrame(ref, columns=X.columns))
+    out = np.zeros((n, k))
+    for order in (range(k), range(k - 1, -1, -1)):
+        z = ref.copy()
+        prev = base
+        for j in order:
+            z[:, j] = real[:, j]
+            now = reg.predict(pd.DataFrame(z, columns=X.columns))
+            out[:, j] += (now - prev) / 2.0
+            prev = now
+    return out, base
+
+
 def explain(past: pd.DataFrame, cur: pd.DataFrame
             ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """(summary, contributions). Contributions plus `_baseline` sum exactly to
@@ -207,16 +241,17 @@ def explain(past: pd.DataFrame, cur: pd.DataFrame
     p = _p_play(_classifier(past, cols), cur, cols)
     reg = _regressor(past, cols)
     X = _X(cur, cols)
-    contrib = reg.predict(X, pred_contrib=True)
-    pts = contrib.sum(axis=1)
+    played = past[past["played"].astype(bool)]
+    contrib, base = _contributions(reg, X, _X(played, cols).median())
+    pts = reg.predict(X)
     summary = pd.DataFrame({
         "player_dk_id": cur["player_dk_id"].to_numpy(),
         "p_play": np.clip(p, 0, 1),
         "points_if_plays": pts,
     })
     summary["projection"] = summary["p_play"] * summary["points_if_plays"]
-    c = pd.DataFrame(contrib[:, :-1], columns=cols)
-    c["_baseline"] = contrib[:, -1]
+    c = pd.DataFrame(contrib, columns=cols)
+    c["_baseline"] = base
     c.insert(0, "player_dk_id", cur["player_dk_id"].to_numpy())
     return summary, c
 
@@ -234,13 +269,18 @@ def top_contributions(contrib: pd.DataFrame, player_dk_id: int,
     return out.head(top).reset_index(drop=True)
 
 
-def importance(df: pd.DataFrame, top: int = 20) -> pd.DataFrame:
-    """Gain importance of the conditional points model on all of `df`."""
+def importance(df: pd.DataFrame, top: int = 20, sample: int = 3000
+               ) -> pd.DataFrame:
+    """How much each feature moves the conditional points model: the mean
+    absolute contribution over a sample of rows. The column keeps the name
+    `gain` because pages/1_Model.py reads each feature's share of it."""
     if not _enough(df):
         return pd.DataFrame(columns=["feature", "gain"])
     cols = _cols(df)
     reg = _regressor(df, cols)
-    gain = reg.booster_.feature_importance(importance_type="gain")
-    out = pd.DataFrame({"feature": cols, "gain": gain})
+    played = df[df["played"].astype(bool)]
+    rows = played.sample(min(sample, len(played)), random_state=SEED)
+    contrib, _ = _contributions(reg, _X(rows, cols), _X(played, cols).median())
+    out = pd.DataFrame({"feature": cols, "gain": np.abs(contrib).mean(axis=0)})
     return out.sort_values("gain", ascending=False).head(top).reset_index(
         drop=True)
