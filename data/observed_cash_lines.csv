@@ -21,3 +21,8 @@ season,week,games,kind,paid_pct,line,draft_group,contest_id,contest,entries,entr
 2026,7,10,classic,0.2590,124.8,155198,196924833,NFL $10K Daily Dollar [Single Entry],11890,1,"paid 3080 (same cap as weeks 4 and 6); GPP 2 (B. Young/Tremble, Hurst bring-back) scored 92.82, rank 10118. Winner 201.26 was GPP 1's stack: Love/Kraft/St. Brown + Kyren"
 2026,7,10,classic,0.2537,126.0,155198,196924832,NFL $10K Pylon [Single Entry],3963,3,"paid count INFERRED as 1005 (25.37%, matching the other Pylons); GPP 1 (Love/Kraft, St. Brown bring-back) scored 136.16, rank 510, CASHED"
 2026,7,10,classic,0.2200,121.4,155198,197143301,NFL $1 Hundo [Single Entry],100,1,"100-entry single-entry tournament, top 22 paid (from the $3 Hundo payout table, assumed identical at $1); cash lineup B scored 103.42, rank 70"
+2026,7,10,classic,0.4350,114.1,155198,196924847,NFL GIANT $10 Double Up [Single Entry],3448,10,"paid 1500; cash lineup A (Love, with LaPorta swapped in for Kraft) scored 101.36, missed by 12.70. Kraft scored 14.8, LaPorta 2.8"
+2026,7,10,classic,0.4352,114.1,155198,196924851,NFL Single Entry $5 Double Up,2298,5,"paid 1000; cash lineup A scored 101.36, missed by 12.70"
+2026,7,10,classic,0.4352,114.1,155198,196924853,NFL Single Entry $5 Double Up,1149,5,"paid 500 (inferred); cash lineup A scored 101.36, missed by 12.70"
+2026,7,10,classic,0.4352,114.1,155198,196924848,NFL GIANT $10 Double Up [Single Entry],2298,10,"paid 1000; cash lineup B (Stroud) scored 103.42, missed by 10.64"
+2026,7,10,classic,0.4350,114.1,155198,196924852,NFL Single Entry $5 Double Up,1724,5,"paid 750 (43.5%, inferred); cash lineup B scored 103.42, missed by 10.64"
