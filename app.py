@@ -90,7 +90,13 @@ def live_slates() -> pd.DataFrame:
     if not rows:
         return pd.DataFrame()
     df = pd.DataFrame(rows)
-    return df.sort_values(["kind", "n_games"], ascending=[True, False])
+    # The Sunday main slate is the one Classic slate DK gives no suffix to --
+    # every other carries "(Sun-Mon)", "(Early Only)", "(Primetime)" and so
+    # on. List it first so it is the default, ahead of larger multi-day ones.
+    df["is_main"] = (df["kind"] == "classic") & (
+        df["suffix"].fillna("").astype(str).str.strip() == "")
+    return df.sort_values(["is_main", "kind", "n_games"],
+                          ascending=[False, True, False]).drop(columns="is_main")
 
 
 @st.cache_data(show_spinner="Loading five seasons of history...")
@@ -333,7 +339,8 @@ if live.empty:
     st.stop()
 
 live["label"] = live.apply(
-    lambda r: f"{r['kind']} - {r['n_games']}g - {r['suffix'] or r['draft_group_id']}",
+    lambda r: (f"{r['kind']} - {r['n_games']}g - "
+               + (r['suffix'] or f"(Main) {r['draft_group_id']}")),
     axis=1,
 )
 choice = st.sidebar.selectbox("Slate", live["label"], index=0)
