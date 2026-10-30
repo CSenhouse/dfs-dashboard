@@ -202,3 +202,29 @@ def test_a_season_is_named_for_the_year_it_started():
     assert nflverse.current_season(dt.date(2026, 9, 26)) == 2026
     assert nflverse.current_season(dt.date(2027, 1, 15)) == 2026
     assert nflverse.current_season(dt.date(2027, 3, 1)) == 2027
+
+
+def test_a_draft_group_cached_before_it_was_priced_is_fetched_again(
+        cache, monkeypatch):
+    """DK creates featured main slates weeks ahead. A sweep that reached one
+    early cached a body with no players, and cached forever the week 8 main
+    slate vanished from the dashboard while DK served it in full."""
+    import json
+    from dfs.sources import dk_api
+
+    empty = json.dumps({"playerList": [], "teamList": {}}).encode()
+    stub(monkeypatch, 200, empty)
+    assert dk_api.draftables(153728, min_interval=0).empty
+
+    priced = json.dumps({
+        "playerList": [{"pid": 1, "pdkid": 1, "fn": "A", "ln": "B", "pn": "QB",
+                        "tid": 10, "htid": 10, "atid": 20, "htabbr": "DET",
+                        "atabbr": "MIN", "s": 6000, "i": "", "tsid": 7,
+                        "dgst": 1793556000000}],
+        "teamList": {}}).encode()
+    stub(monkeypatch, 200, priced)
+    assert len(dk_api.draftables(153728, min_interval=0)) == 1
+    # ...and offline analysis still never touches the network.
+    calls = stub(monkeypatch, 200, priced)
+    dk_api.draftables(999, cache_only=True)
+    assert calls == []

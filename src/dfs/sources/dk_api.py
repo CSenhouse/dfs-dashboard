@@ -168,6 +168,18 @@ def draftables(dgid: int, *, cache_only: bool = False, refresh: bool = False,
             df = _from_legacy(dgid, json.loads(body))
         except (ValueError, TypeError, AttributeError):
             df = pd.DataFrame(columns=COLUMNS)
+    # DK creates featured main slates weeks ahead, and a sweep that reached one
+    # before it was priced cached a body with no players. Cached forever, the
+    # live main slate then vanished from the dashboard (week 8, dg 153728).
+    # An empty player list is never final while we are online: ask again.
+    if df.empty and body and not cache_only and not refresh:
+        fresh = http.get(LEGACY.format(dgid=int(dgid)), ".json",
+                         min_interval=min_interval, refresh=True)
+        if fresh:
+            try:
+                df = _from_legacy(dgid, json.loads(fresh))
+            except (ValueError, TypeError, AttributeError):
+                df = pd.DataFrame(columns=COLUMNS)
     if df.empty:
         status = http.last_status       # what the live request said
         body = http.get(DRAFTABLES.format(dgid=int(dgid)), ".json",
