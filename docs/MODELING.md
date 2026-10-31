@@ -1644,3 +1644,29 @@ beats either. The dashboard's Blend 50/50 is therefore the default to prefer.
 One slate; the lineup-level tracker (`scripts/track_methods.py`) had model
 ahead in cash and blend ahead in GPP the same week, which one lineup per
 format cannot resolve. Re-run each week on the slate the DFF file is bound to.
+
+## 36. A view for Hundos (rebuild, 2026-10-30)
+
+A Hundo is a 100-entry single-entry contest paying the top 22 (90% of fees
+back, first place 14x). `scripts/hundo_view.py` built lineups from five
+views of the walk-forward distribution -- q30 floor, q50, mean, q70, q85
+ceiling -- each with no stack, a QB stack, and a stack plus bring-back, over
+93 weeks, and paid each against 99 opponents optimizing the mean projection
+with 30% noise, using the real $3 Hundo table.
+
+Pooled by view, paired by week:
+
+    floor (q30)        1.06 per $1
+    middle (q50/mean)  1.38
+    upside (q70/q85)   1.45     floor minus upside -0.38, worse 54 of 80, p=0.04
+
+Stacking style made no significant difference (single stack 1.40, none 1.32,
+stack + bring-back 1.32; every p >= 0.32), and no single view-and-build cell
+beat its neighbours significantly. Absolute returns above 1.0 say the
+modelled field is softer than a real Hundo's; the ranking is the finding.
+
+So a cash (floor) lineup is the wrong lineup for a Hundo, which is how one
+was being entered. The dashboard's "Hundo / small tournament" contest type
+optimizes `proj_hundo` = P(play) x q70 (clipped between floor and ceiling)
+with a single QB stack and no forced bring-back. What remains open is the
+exact view within the upside group, which needs real Hundo results.

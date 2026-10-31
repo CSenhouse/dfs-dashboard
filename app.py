@@ -48,6 +48,16 @@ CONTESTS = {
               "Across 33,646 counted tournament entries the bring-back gave "
               "1.97x the top-1% rate (p<0.0001). Tournaments pay the tail.",
     ),
+    "Hundo / small tournament": dict(
+        col="proj_hundo", view="Hundo", stack=1, back=0, min_diff=2,
+        blurb="Optimizes the **70th percentile** -- an upside view between "
+              "the floor and the ceiling -- and stacks the QB with one pass "
+              "catcher, no forced bring-back. Built for 100-entry contests "
+              "paying the top 22. Over 93 backtested weeks, floor (cash) "
+              "builds returned $0.38 less per $1 in a Hundo than upside "
+              "builds; the exact view and stack among the upside ones are "
+              "within noise.",
+    ),
     "Neutral (expected)": dict(
         col="proj_mean", view="Expected", stack=0, back=0, min_diff=1,
         blurb="Optimizes the **mean** -- what he averages over many runs. "
@@ -187,6 +197,7 @@ SHOWDOWN_RULES = {
     "proj_floor": dict(min_qb=1),                       # cash
     "proj_ceiling": dict(min_qb=1, qb_stack=1),         # tournament
     "proj_mean": dict(min_qb=1),
+    "proj_hundo": dict(min_qb=1, qb_stack=1),
 }
 
 N_SIMS = 4000
@@ -846,6 +857,11 @@ with tab_lu:
                      "team": "Team", "salary": "Salary",
                      "proj_floor": "Floor", "proj_mean": "Expected",
                      "proj_ceiling": "Ceiling"}
+            if _view_col == "proj_hundo" and "proj_hundo" in lu.columns:
+                # The optimised column has to be visible, between the two
+                # views it sits between.
+                cols.insert(cols.index("proj_ceiling"), "proj_hundo")
+                names["proj_hundo"] = "Hundo"
             spend, points = lu["salary"].sum(), lu["projection"].sum()
 
         st.subheader(f"Lineup {int(lu['lineup'].iloc[0]) + 1}")
@@ -859,6 +875,7 @@ with tab_lu:
                 "Floor": st.column_config.NumberColumn(format="%.1f"),
                 "Expected": st.column_config.NumberColumn(format="%.1f"),
                 "Ceiling": st.column_config.NumberColumn(format="%.1f"),
+                "Hundo": st.column_config.NumberColumn(format="%.1f"),
             },
         )
         _view = CONTESTS[contest]["view"]

@@ -143,3 +143,12 @@ def test_salary_rank_can_be_scoped_to_the_slate():
     assert across.iloc[3] < 0.6
     assert within.iloc[3] == pytest.approx(1.0)
     assert within.iloc[0] == pytest.approx(1.0)
+
+
+def test_the_hundo_view_sits_between_floor_and_ceiling(history):
+    """Hundos are scored on the 70th percentile: an upside view, but never
+    above the ceiling or below the floor it is meant to sit between."""
+    out = model.two_stage_all(history, history.head(200).copy())
+    assert (out["points_floor"] <= out["points_hundo"] + 1e-9).all()
+    assert (out["points_hundo"] <= out["points_ceiling"] + 1e-9).all()
+    assert np.allclose(out["proj_hundo"], out["p_play"] * out["points_hundo"])

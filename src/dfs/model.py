@@ -33,6 +33,10 @@ from dfs.simulate import ALPHAS, QCOLS
 SEED = 0
 MIN_ROWS = 100           # played rows needed to fit anything
 FLOOR_Q, CEILING_Q = 0.30, 0.85
+# Hundos (100-entry, top 22 paid): an upside view between the two. Over 93
+# walk-forward weeks floor builds returned 0.38 less per $1 than q70/q85
+# builds (p=0.04); see scripts/hundo_view.py and docs/MODELING.md 36.
+HUNDO_Q = 0.70
 
 BASE = dict(max_iter=300, learning_rate=0.05, max_leaf_nodes=31,
             min_samples_leaf=30, l2_regularization=1.0, max_features=0.8,
@@ -186,7 +190,9 @@ def two_stage_all(past: pd.DataFrame, cur: pd.DataFrame, exclude=()
     out["points_mean"] = mean
     out["points_floor"] = np.minimum(floor, mean)
     out["points_ceiling"] = np.maximum(ceiling, mean)
-    for view in ("floor", "mean", "ceiling"):
+    out["points_hundo"] = np.clip(grid[:, ALPHAS.index(HUNDO_Q)],
+                                  out["points_floor"], out["points_ceiling"])
+    for view in ("floor", "mean", "ceiling", "hundo"):
         out[f"proj_{view}"] = out["p_play"] * out[f"points_{view}"]
     return out
 
