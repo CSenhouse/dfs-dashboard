@@ -54,9 +54,9 @@ CONTESTS = {
               "the floor and the ceiling -- and stacks the QB with one pass "
               "catcher, no forced bring-back. Built for 100-entry contests "
               "paying the top 22. Over 93 backtested weeks, floor (cash) "
-              "builds returned $0.38 less per $1 in a Hundo than upside "
-              "builds; the exact view and stack among the upside ones are "
-              "within noise.",
+              "builds returned 38 cents less per dollar in a Hundo than "
+              "upside builds; the exact view and stack among the upside ones "
+              "are within noise.",
     ),
     "Neutral (expected)": dict(
         col="proj_mean", view="Expected", stack=0, back=0, min_diff=1,
@@ -390,6 +390,13 @@ cur = project(dgid, is_showdown)
 if cur.empty:
     st.error("Could not assemble this slate. It may not map to a scheduled week.")
     st.stop()
+if "proj_hundo" not in cur.columns and "q70" in cur.columns:
+    # A projection cached, or a model module loaded, before the Hundo view
+    # existed. Derive it the way model.two_stage_all does rather than fail.
+    cur = cur.copy()
+    cur["points_hundo"] = cur["q70"].clip(lower=cur["points_floor"],
+                                          upper=cur["points_ceiling"])
+    cur["proj_hundo"] = cur["p_play"] * cur["points_hundo"]
 
 # The contest type selects which view of the distribution to optimise. All
 # three were computed together, so switching is instant.
