@@ -144,8 +144,21 @@ def main() -> int:
         df = df[df["when"] >= pd.Timestamp(args.season, 8, 1)]
     df["kind"] = df.apply(kind, axis=1)
     df["week"] = df["when"].map(nfl_week)
+    # DK's history never says which sport a contest was. Anything not
+    # listed in sports.csv (id,sport) is NFL; tag the rest by hand.
+    tags = LEDGER / "sports.csv"
+    sport = (pd.read_csv(tags).set_index("id")["sport"].str.upper()
+             if tags.exists() else pd.Series(dtype=str))
+    df["sport"] = df["id"].map(sport).fillna("NFL")
     fantasy = df[df["product"].str.lower().eq("fantasy")
                  | df["kind"].isin(["promo"])]
+    for name, part in fantasy.groupby("sport"):
+        if name == "NFL" and fantasy["sport"].nunique() == 1:
+            break
+        net = part.loc[part["kind"].isin(["entry", "refund", "winnings"]),
+                       "amount"].sum()
+        print(f"  {name}: {int((part['kind'] == 'entry').sum())} entries, "
+              f"contests net {net:+.2f}")
     table = fantasy.pivot_table(index="week", columns="kind", values="amount",
                                 aggfunc="sum", fill_value=0.0)
     for c in ("entry", "refund", "winnings", "promo"):
