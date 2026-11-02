@@ -30,3 +30,5 @@ season,week,games,kind,paid_pct,line,draft_group,contest_id,contest,entries,entr
 2026,8,11,classic,0.4351,123.8,153728,197189648,double-up 2758-cap,2758,,"paid 1200 (43.5%); cash lineup A scored 160.10, rank 131, cleared by 36.3"
 2026,8,11,classic,0.4352,123.3,153728,197189645,double-up 2298-cap,2298,,"paid 1000 (43.5%); cash lineup B (Model) scored 104.60, rank 2001, missed by 18.7. Metcalf 1.4"
 2026,8,11,classic,0.4350,123.3,153728,197189649,double-up 1839-cap,1839,,"paid 800 (43.5%); cash lineup B scored 104.60, rank 1631, missed by 18.7"
+2026,8,11,classic,0.2200,147.2,153728,197193679,Hundo 100-entry,100,,"paid 22; Hundo #1 (Blend q70, Lawrence + Strange stack) scored 115.30, rank 62, missed by 31.9"
+2026,8,11,classic,0.2200,140.9,153728,197193678,Hundo 100-entry,100,,"paid 22; Hundo #2 (Ollie Gordon II in for A.J. Brown) scored 103.20, rank 75, missed by 37.7"
