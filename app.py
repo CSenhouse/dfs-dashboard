@@ -21,7 +21,7 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from dfs import (backtest, cash_lines, contest_ev, features,  # noqa: E402
-                 model, optimizer, overrides, simulate, slates)
+                 model, optimizer, overrides, ownership, simulate, slates)
 from dfs.config import CURATED, SALARY_CAP  # noqa: E402
 from dfs.optimizer import SHOWDOWN_SIZE  # noqa: E402
 from dfs.sources import dff, dk_api, nflverse  # noqa: E402
@@ -299,6 +299,17 @@ def real_fields(showdown: bool = False) -> pd.DataFrame:
         "entries", ascending=False).reset_index(drop=True)
 
 
+@st.cache_resource(show_spinner=False)
+def ownership_model():
+    """Fitted by scripts/ownership_model.py; None until it has been run."""
+    return ownership.load_model()
+
+
+# Which field's ownership to show for each contest type.
+OWN_COL = {"proj_floor": "own_double_up", "proj_mean": "own_double_up",
+           "proj_ceiling": "own_tournament", "proj_hundo": "own_hundo"}
+
+
 @st.cache_data(show_spinner=False)
 def ruled_out(dgid: int) -> pd.DataFrame:
     """Players DraftKings flags as unable to play (IR, OUT, suspended)."""
@@ -415,6 +426,23 @@ _view_col = CONTESTS[contest]["col"]
 _slate_teams = tuple(sorted(cur["team"].dropna().astype(str).unique()))
 _slate_date = str(pd.to_datetime(row["start_time"]).date())
 _dff, _dff_why, _dff_src = dff_export(dgid, _slate_teams)
+
+# Projected ownership, before any blend or hand edit touches the projection:
+# the ownership model was trained on the model's own proj_mean beside DFF's,
+# so feeding it a blended number would count DFF twice. Classic only -- every
+# counted field it learned from was a Classic one (docs/MODELING.md 37).
+_own_model = ownership_model() if not is_showdown else None
+if _own_model is not None:
+    _own_in = cur
+    if not _dff.empty:
+        _om = dff.match(_dff, cur[["player_dk_id", "player_name", "position",
+                                   "team", "salary"]])
+        _om = _om[_om["matched"]][["player_dk_id", "dff_proj"]]
+        _own_in = cur.merge(_om.drop_duplicates("player_dk_id"),
+                            on="player_dk_id", how="left")
+    cur = cur.merge(ownership.project(_own_model, _own_in),
+                    on="player_dk_id", how="left")
+
 _src = "Model"
 if not _dff.empty:
     # An explicit key pins the widget's identity. Without one Streamlit
@@ -869,6 +897,11 @@ with tab_lu:
                 # views it sits between.
                 cols.insert(cols.index("proj_ceiling"), "proj_hundo")
                 names["proj_hundo"] = "Hundo"
+            _oc = OWN_COL.get(_view_col)
+            if _oc in lu.columns:
+                lu = lu.assign(own_pct=100 * lu[_oc])
+                cols.append("own_pct")
+                names["own_pct"] = "Own%"
             spend, points = lu["salary"].sum(), lu["projection"].sum()
 
         st.subheader(f"Lineup {int(lu['lineup'].iloc[0]) + 1}")
@@ -883,6 +916,12 @@ with tab_lu:
                 "Expected": st.column_config.NumberColumn(format="%.1f"),
                 "Ceiling": st.column_config.NumberColumn(format="%.1f"),
                 "Hundo": st.column_config.NumberColumn(format="%.1f"),
+                "Own%": st.column_config.NumberColumn(
+                    format="%.0f%%",
+                    help="Projected share of this contest type's field "
+                         "rostering him. Ranks the chalk well (0.78 held "
+                         "out) but misses news-driven chalk: a backup handed "
+                         "a starting job can be 50-70% owned and show 5%."),
             },
         )
         _view = CONTESTS[contest]["view"]
@@ -1203,10 +1242,16 @@ with tab_players:
         "**Pts/$1k** is value against that same view."
     )
     view = with_logo(cur[cur["position"].isin(pos)].nlargest(300, "projection"))
-    st.dataframe(
-        view[["logo", "player_name", "position", "team", "salary",
+    _oc = OWN_COL.get(_view_col)
+    _pcols = ["logo", "player_name", "position", "team", "salary",
               "proj_floor", "proj_mean", "proj_ceiling", "p_play",
-              "pts_per_1k"]].rename(columns={
+              "pts_per_1k"]
+    if _oc in view.columns:
+        view = view.assign(own_pct=100 * view[_oc])
+        _pcols.append("own_pct")
+    st.dataframe(
+        view[_pcols].rename(columns={
+                  "own_pct": "Own%",
                   "logo": " ",
                   "player_name": "Player", "position": "Pos", "team": "Team",
                   "salary": "Salary",
@@ -1222,6 +1267,9 @@ with tab_players:
             "Ceiling": st.column_config.NumberColumn(format="%.1f"),
             "Plays": st.column_config.NumberColumn(format="%.0f%%"),
             "Pts/$1k": st.column_config.NumberColumn(format="%.2f"),
+            "Own%": st.column_config.NumberColumn(
+                format="%.0f%%",
+                help="Projected ownership in this contest type's field."),
         },
     )
 

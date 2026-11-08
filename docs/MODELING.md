@@ -1670,3 +1670,59 @@ was being entered. The dashboard's "Hundo / small tournament" contest type
 optimizes `proj_hundo` = P(play) x q70 (clipped between floor and ceiling)
 with a single QB stack and no forced bring-back. What remains open is the
 exact view within the upside group, which needs real Hundo results.
+
+## 37. Projected ownership, learned from counted fields (2026-11-08)
+
+Section 21 found real ownership ranks players against outcomes and keeps
+signal after our projection is removed, and that using it needs ownership
+BEFORE lock. DFF's ownership column is premium-gated (section 31), so
+`ownership.py` learns it from the only ground truth here: the standings
+exports. Only weeks 6-8 of 2026 survived the rebuild with player-level
+ownership -- 21 Classic contests, three slates, three contest types (5
+double-ups, 2 tournaments and 1-2 Hundos per slate, entries-weighted within
+type, unlisted players at zero, names joined inside the slate with
+duplicates dropped; 0.00 of 9.00 ownership unmatched in every contest).
+
+Features are all pregame and computed within the slate: salary, P(play),
+our proj_mean, DFF's projection, both as points per $1k, ranks within
+position and overall, Vegas implied total and spread, position, contest
+type. HistGradientBoosting on sqrt(ownership), seeded; predictions are
+rescaled so each field sums to 9.0, nine roster spots per entry.
+
+Leave-one-slate-out (each slate predicted by a model that never saw it):
+
+                    spearman   top-10 MAE   top-10 found
+    salary only       0.686       0.320         1.9
+    our model         0.753       0.287         2.9
+    model + DFF       0.776       0.179         5.9
+
+DFF's numbers double the chalk found, which fits section 35: the crowd
+reads free projections. Monotone constraints, within-position z-scores and a
+Poisson log-linear fit all landed within 0.02 spearman and missed the SAME
+players by the same 40 points, so the misses are not the model's form.
+
+They are news. The worst held-out misses in double-ups were Rhamondre
+Stevenson (71% owned, 2% predicted), Braelon Allen (58% / 5%), Germie
+Bernard (57% / 19%) and Hunter Henry (31% / 1%) -- players our projection
+and DFF's both rated as ordinary value, whom the crowd took as a role
+change. A model fed only what we know cannot see that, and it misses one to
+three such players a week.
+
+The crowd-signal question, on these three slates (partial rank correlation
+with actual points after our projection is removed, players projected 5+):
+
+                   real ownership   predicted ownership
+    double-up        +0.087 p=0.08      +0.110 p=0.03
+    tournament       +0.104 p=0.09      +0.096 p=0.12
+    hundo            +0.000 p=1.00      +0.034 p=0.57
+
+On these weeks real ownership carried far less extra signal than the +0.29
+and +0.18 of weeks 2-3, and predicted ownership carries about as much --
+which is the DFF half of the blend, not new information. Three slates;
+treat as a direction.
+
+Shown as Own% in the dashboard's lineup and player tables for the field the
+contest type implies (Classic only). Predictions for each live slate are
+written to data/ownership_predictions/ BEFORE lock (week 9 at 09:12 ET), so
+every new export is a genuinely out-of-sample test. Retrain after each
+week's exports: `scripts/ownership_model.py --rebuild`.

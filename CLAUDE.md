@@ -26,6 +26,9 @@ Target mix: ~60% double-ups (cash), ~40% GPP.
     PYTHONPATH=src .venv/Scripts/python.exe scripts/leverage.py
     PYTHONPATH=src .venv/Scripts/python.exe scripts/crowd_benchmark.py
 
+    # projected ownership: retrain after each week's exports
+    PYTHONPATH=src .venv/Scripts/python.exe scripts/ownership_model.py --rebuild
+
     # hand edits to a projection: are they right more often than not?
     PYTHONPATH=src .venv/Scripts/python.exe scripts/override_value.py
 
@@ -56,6 +59,7 @@ Target mix: ~60% double-ups (cash), ~40% GPP.
     src/dfs/contest_ev.py  payout tables, rank in a REAL field, and the
                            guard against pricing a lineup off its tail
     src/dfs/overrides.py   hand edits to a projection, logged as an experiment
+    src/dfs/ownership.py   projected ownership, learned from counted fields
     data/cache/            gzipped raw HTTP responses. THE ASSET. Never delete.
 
 Read `docs/MODELING.md` before changing the model and `docs/DATA_SOURCES.md`
@@ -506,7 +510,8 @@ desync the optimizer from the simulator. Verified live: 410 of 771 matched,
 100% of on-slate players, cash floor 89.3 -> 91.8. Agreement with our model is
 spearman 0.944 across 295 players. See docs/MODELING.md 30-31.
 
-Known gaps: ownership only from exports, participation uses a 4-week proxy
+Known gaps: projected ownership learned from three slates and blind to
+news-driven chalk (docs/MODELING.md 37), participation uses a 4-week proxy
 rather than the 90-minute inactive report, the cash line is simulated rather
 than observed, stacked GPP lineups simulate too wide (87.3% coverage), and we
 have no benchmark telling us whether our projections are good or mediocre
