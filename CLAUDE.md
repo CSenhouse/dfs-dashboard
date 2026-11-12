@@ -60,6 +60,9 @@ Target mix: ~60% double-ups (cash), ~40% GPP.
                            guard against pricing a lineup off its tail
     src/dfs/overrides.py   hand edits to a projection, logged as an experiment
     src/dfs/ownership.py   projected ownership, learned from counted fields
+    src/dfs/snapshot.py    pre-lock projections, written by the dashboard while
+                           a slate is live; the method tracker scores these,
+                           not after-the-fact rebuilds. Commit after lock
     data/cache/            gzipped raw HTTP responses. THE ASSET. Never delete.
 
 Read `docs/MODELING.md` before changing the model and `docs/DATA_SOURCES.md`

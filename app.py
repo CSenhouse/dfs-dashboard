@@ -21,7 +21,8 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from dfs import (backtest, cash_lines, contest_ev, features,  # noqa: E402
-                 model, optimizer, overrides, ownership, simulate, slates)
+                 model, optimizer, overrides, ownership, simulate, slates,
+                 snapshot)
 from dfs.config import CURATED, SALARY_CAP  # noqa: E402
 from dfs.optimizer import SHOWDOWN_SIZE  # noqa: E402
 from dfs.sources import dff, dk_api, nflverse  # noqa: E402
@@ -431,17 +432,32 @@ _dff, _dff_why, _dff_src = dff_export(dgid, _slate_teams)
 # the ownership model was trained on the model's own proj_mean beside DFF's,
 # so feeding it a blended number would count DFF twice. Classic only -- every
 # counted field it learned from was a Classic one (docs/MODELING.md 37).
+_om = pd.DataFrame(columns=["player_dk_id", "dff_proj"])
+if not _dff.empty:
+    _om = dff.match(_dff, cur[["player_dk_id", "player_name", "position",
+                               "team", "salary"]])
+    _om = _om[_om["matched"]][["player_dk_id", "dff_proj"]]
 _own_model = ownership_model() if not is_showdown else None
 if _own_model is not None:
-    _own_in = cur
-    if not _dff.empty:
-        _om = dff.match(_dff, cur[["player_dk_id", "player_name", "position",
-                                   "team", "salary"]])
-        _om = _om[_om["matched"]][["player_dk_id", "dff_proj"]]
-        _own_in = cur.merge(_om.drop_duplicates("player_dk_id"),
-                            on="player_dk_id", how="left")
+    _own_in = cur.merge(_om.drop_duplicates("player_dk_id"),
+                        on="player_dk_id", how="left")
     cur = cur.merge(ownership.project(_own_model, _own_in),
                     on="player_dk_id", how="left")
+
+# Pre-lock snapshot for the method tracker (src/dfs/snapshot.py): rewritten
+# at most every ten minutes while the slate is live, so the last one written
+# before kickoff is what the dashboard showed. Classic only, like the tracker.
+# A new DFF upload rewrites it at once, or a lineup built and entered within
+# ten minutes of the upload would be snapshotted without its blend.
+_snap_sig = f"{dgid}:{_dff_src}:{len(_om)}"
+if (not is_showdown and pd.Timestamp(row["start_time"]) > pd.Timestamp.now(
+        tz="UTC") and ((snapshot.age_seconds(dgid) or 1e9) > 600
+                       or st.session_state.get("snap_sig") != _snap_sig)):
+    _snap_cur = cur[~cur["player_dk_id"].isin(
+        ruled_out(dgid)["player_dk_id"])]
+    snapshot.save(dgid, snapshot.take(
+        _snap_cur, snapshot.blend_factor(_snap_cur, _om)))
+    st.session_state["snap_sig"] = _snap_sig
 
 _src = "Model"
 if not _dff.empty:

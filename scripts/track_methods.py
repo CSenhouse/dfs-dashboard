@@ -12,9 +12,14 @@ Every method sees the same slate, the same rules and the same field, so the
 weekly comparison is paired (rule 2). One week is one draw with a ~25-point
 spread; read the cumulative table, not a single row.
 
-Reconstruction caveat: features are rebuilt after the fact, so pregame inputs
-published late (that week's injury report) are visible here and were not to
-the live dashboard. Both methods share that, so it does not favour either.
+Where the dashboard saved a pre-lock snapshot (data/snapshots/, written while
+the slate was live -- src/dfs/snapshot.py), the lineups are built from it:
+exactly what the dashboard showed. Without one the slate is re-projected
+after the fact, and then it is a RECONSTRUCTION: features carry the week's
+final injury report and refreshed nflverse files, and on week 9 of 2026 that
+changed three of nine players in the Model cash lineup. results.csv records
+which source each row came from; read only "snapshot" rows as what would
+have been played.
 
     PYTHONPATH=src .venv/Scripts/python.exe scripts/track_methods.py 154941
     PYTHONPATH=src .venv/Scripts/python.exe scripts/track_methods.py --report
@@ -31,7 +36,7 @@ import numpy as np
 import pandas as pd
 
 from dfs import backtest, contest_ev, contests, features, model, optimizer, \
-    overrides, slates
+    overrides, slates, snapshot
 from dfs.config import CURATED, DATA
 from dfs.sources import dff, dk_api
 
@@ -177,7 +182,15 @@ def judge(score: float, kind: str, obs: pd.DataFrame) -> dict:
 
 
 def record(dgid: int) -> pd.DataFrame:
-    cur, showdown, season, week = project(dgid)
+    snap = snapshot.load(dgid)
+    if snap is not None:
+        cur, showdown = snap, False
+        season, week = int(snap["season"].iloc[0]), int(snap["week"].iloc[0])
+        source = f"snapshot {snap['snapshot_at'].iloc[0]}"
+    else:
+        cur, showdown, season, week = project(dgid)
+        source = "rebuilt"
+    print(f"dg {dgid}: {source}")
     obs = contests_for(dgid)
     if obs.empty:
         print(f"note: no recorded contests on {dgid}; lineups saved, "
@@ -186,7 +199,8 @@ def record(dgid: int) -> pd.DataFrame:
     rows, players = [], []
     for method, weight in METHODS.items():
         for kind, v in VIEWS.items():
-            pool = blend(cur, dgid, v["col"], weight)
+            pool = (snapshot.with_method(cur, method) if snap is not None
+                    else blend(cur, dgid, v["col"], weight))
             lu = build(pool, showdown, kind)
             if lu.empty:
                 continue
@@ -196,6 +210,7 @@ def record(dgid: int) -> pd.DataFrame:
             score = float((got.fillna(0) * mult).sum())
             rows.append({"season": season, "week": week,
                          "draft_group_id": dgid, "method": method,
+                         "source": source.split()[0],
                          "kind": kind, "projected": float(
                              (lu[v["col"]] * mult).sum()),
                          "score": score,
@@ -230,24 +245,32 @@ def report() -> None:
         print("nothing tracked yet")
         return
     r = pd.read_csv(path)
+    if "source" not in r.columns:
+        r["source"] = np.nan
+    r["source"] = r["source"].where(~r["method"].isin(METHODS),
+                                    r["source"].fillna("rebuilt"))
     built = r[r["method"].isin(METHODS)]
     print("=== per slate ===")
-    print(r[["season", "week", "draft_group_id", "method", "kind", "score",
-             "cashed", "contests", "margin"]].round(2).to_string(index=False))
-    print("\n=== running totals, rebuilt lineups ===")
-    t = built.groupby(["kind", "method"]).agg(
+    print(r[["season", "week", "draft_group_id", "method", "source", "kind",
+             "score", "cashed", "contests", "margin"]].round(2)
+          .to_string(index=False))
+    # Only snapshot rows are what the dashboard actually showed before lock;
+    # rebuilt rows are reconstructions and are reported apart.
+    print("\n=== running totals, by source ===")
+    t = built.groupby(["source", "kind", "method"]).agg(
         slates=("score", "size"), mean_score=("score", "mean"),
         cashed=("cashed", "sum"), contests=("contests", "sum"),
         mean_margin=("margin", "mean"))
     t["cash_rate"] = t["cashed"] / t["contests"].replace(0, np.nan)
     print(t.round(2).to_string())
-    for kind in VIEWS:
-        p = built[built["kind"] == kind].pivot_table(
-            index="draft_group_id", columns="method", values="score")
+    for (src, kind), g in built.groupby(["source", "kind"]):
+        p = g.pivot_table(index="draft_group_id", columns="method",
+                          values="score")
         if {"model", "blend"} <= set(p.columns) and len(p):
             d = (p["blend"] - p["model"]).dropna()
-            print(f"\n{kind}: blend minus model {d.mean():+.2f} per slate, "
-                  f"blend better on {int((d > 0).sum())} of {len(d)} slates")
+            print(f"\n{src} {kind}: blend minus model {d.mean():+.2f} per "
+                  f"slate, blend better on {int((d > 0).sum())} of {len(d)} "
+                  "slates")
 
 
 def main(argv: list[str]) -> int:
