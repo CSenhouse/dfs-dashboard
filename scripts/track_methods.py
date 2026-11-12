@@ -1,8 +1,9 @@
 """Which projection source builds better lineups? A running, paired record.
 
 For each finished slate, rebuild the lineup each method WOULD have produced
--- the model alone and the 50/50 blend with Daily Fantasy Fuel, in both the
-cash (floor) and tournament (ceiling, stack + bring-back) settings, with the
+-- the model alone and the 50/50 blend with Daily Fantasy Fuel, in the cash
+(floor), tournament (ceiling, stack + bring-back) and Hundo (q70, stack)
+settings, with the
 dashboard's own rules -- score every lineup on what actually happened, and
 check it against the real cash lines of the contests played that week. The
 lineups actually entered are recorded beside them.
@@ -40,8 +41,11 @@ ME = "senhouse"
 VIEWS = {
     "cash": dict(col="proj_floor", stack=0, back=0),
     "gpp": dict(col="proj_ceiling", stack=1, back=1),
+    # The dashboard's Hundo type: q70, one stack, no forced bring-back.
+    "hundo": dict(col="proj_hundo", stack=1, back=0),
 }
-SHOWDOWN_RULES = {"cash": dict(min_qb=1), "gpp": dict(min_qb=1, qb_stack=1)}
+SHOWDOWN_RULES = {"cash": dict(min_qb=1), "gpp": dict(min_qb=1, qb_stack=1),
+                  "hundo": dict(min_qb=1, qb_stack=1)}
 METHODS = {"model": 0.0, "blend": 0.5}
 
 
@@ -110,7 +114,9 @@ def contests_for(dgid: int) -> pd.DataFrame:
     """The recorded contests on this draft group, with their lines."""
     obs = pd.read_csv(DATA / "observed_cash_lines.csv")
     obs = obs[obs["draft_group"].astype("Int64") == dgid].copy()
-    obs["kind"] = np.where(pd.to_numeric(obs["paid_pct"]) > 0.40, "cash", "gpp")
+    paid = pd.to_numeric(obs["paid_pct"])
+    obs["kind"] = np.select([pd.to_numeric(obs["entries"]) <= 100, paid > 0.40],
+                            ["hundo", "cash"], "gpp")
     return obs
 
 
