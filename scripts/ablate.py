@@ -28,6 +28,7 @@ GROUPS = {
     "vegas": ("implied_total", "spread", "game_total"),
     "position": ("pos_",),
     "snaps": ("offense_pct",),
+    "vacated": ("vac_",),
 }
 
 

@@ -46,7 +46,8 @@ Target mix: ~60% double-ups (cash), ~40% GPP.
                            opinion, and projected ownership. IMPORTED
     src/dfs/crosswalk.py   DK player -> nflverse gsis_id
     src/dfs/slates.py      assemble a slate: salaries + actual scores
-    src/dfs/features.py    59 features, pregame/lagged separation enforced
+    src/dfs/features.py    62 features, pregame/lagged separation enforced;
+                           vac_* = an absent teammate's work (MODELING 38)
     src/dfs/model.py       two-stage P(play) x points|play, scikit-learn
                            HistGradientBoosting (was LightGBM; see below)
     src/dfs/optimizer.py   MILP: optimize() classic, optimize_showdown()
@@ -261,7 +262,8 @@ every other Status figure below is still from the lost model.
   consecutive refusals and holds off idle sleep. The 2021-2026 sweep (10,518
   NFL slates) drew no refusals at that pace.
 - **`features.py` is a re-implementation**: 59 features against the original
-  87, same classes (lagged / pregame), same `_roll` semantics pinned by
+  87 (62 since vacated opportunity, MODELING.md 38: spearman 0.756 -> 0.774,
+  better in 95/96 paired weeks), same classes (lagged / pregame), same `_roll` semantics pinned by
   tests/test_leakage.py.
 - Lost and unrecoverable: the twelve contest standings exports and the DFF
   files. `data/contest_fields.csv` and `observed_cash_lines.csv` survived.

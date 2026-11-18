@@ -24,7 +24,7 @@ import pandas as pd
 
 from dfs import crosswalk
 from dfs.scoring import score_dst, score_offense
-from dfs.sources import nflverse
+from dfs.sources import dk_api, nflverse
 
 POSITIONS = ("QB", "RB", "WR", "TE", "DST", "K")
 OFFENSE = ("QB", "RB", "WR", "TE", "K", "FB")
@@ -55,7 +55,16 @@ FEATURES = (
     + ["def_allowed_r3", "def_allowed_r6"]
     + ["injury_prob", "injury_code", "practice_code"]
     + ["depth_team", "is_starter"]
+    + ["vac_usage", "vac_share", "vac_inherit"]
 )
+
+# Vacated opportunity: who inherits an absent teammate's work. Usage is
+# position-shaped -- a running back's touches, a pass catcher's targets, a
+# quarterback's attempts -- and it flows within the group that absorbs it.
+USAGE_GROUP = {"RB": "RB", "FB": "RB", "WR": "REC", "TE": "REC", "QB": "QB"}
+# Roster statuses that mean "will not play this week": inactive on gameday
+# (announced 90 minutes before kickoff, so pregame) and the reserve lists.
+ABSENT_ROSTER = {"INA", "RES"}
 
 INJURY_PROB = {"out": 0.0, "doubtful": 0.15, "questionable": 0.75}
 INJURY_CODE = {"out": 3, "doubtful": 2, "questionable": 1}
@@ -369,6 +378,85 @@ def _depth(season: int, games: pd.DataFrame) -> pd.DataFrame:
 
 # --- assembly ----------------------------------------------------------------
 
+def _vacated(hist: pd.DataFrame, f: pd.DataFrame, seasons: list[int],
+             inj: pd.DataFrame) -> pd.DataFrame:
+    """(gsis_id, season, week) -> vac_usage, vac_share, vac_inherit.
+
+    Week 10 of 2026: Kenneth Walker III was ruled out, Emmett Johnson ($4,700)
+    took Kansas City's backfield, was 87% owned in double-ups and scored 38.1
+    -- and the model had him at 6.9, because nothing in it knew a starter was
+    missing. Walker was only QUESTIONABLE on the injury report; he was ruled
+    inactive on gameday. So absence here is the union of: inactive or reserve
+    on that week's roster, Out or Doubtful on the injury report, and -- on a
+    LIVE slate only, rule 8 -- DraftKings' own OUT/IR flag.
+
+    Each player's usage is his mean over the last three CALENDAR weeks he
+    could have played (shifted: lagged). A teammate who has been out longer
+    contributes nothing, because the players who replaced him already carry
+    that work in their own rolling numbers. For every (team, week, group):
+
+        vac_usage    usage of the absent teammates in his group
+        vac_share    his own usage over the group's remaining usage
+        vac_inherit  vac_usage x vac_share: his pro-rata slice
+    """
+    cols = ["gsis_id", "season", "week", "vac_usage", "vac_share",
+            "vac_inherit"]
+    ro = pd.concat([_load("rosters", s) for s in seasons], ignore_index=True)
+    if ro.empty or hist.empty or "week" not in ro.columns:
+        return pd.DataFrame(columns=cols)
+    r = ro.dropna(subset=["gsis_id"]).copy()
+    r["position"] = crosswalk.normalize_position(r["position"])
+    r["grp"] = r["position"].map(USAGE_GROUP)
+    r = r.dropna(subset=["grp"])
+    r["team"] = crosswalk.normalize_team(r["team"])
+    r["season"], r["week"] = r["season"].astype(int), r["week"].astype(int)
+    r = r[["gsis_id", "season", "week", "team", "grp", "status"]] \
+        .drop_duplicates(["gsis_id", "season", "week"])
+
+    h = hist[hist["position"].isin(USAGE_GROUP)].copy()
+    g = h["position"].map(USAGE_GROUP)
+    h["usage"] = np.select(
+        [g == "RB", g == "REC", g == "QB"],
+        [h["carries"].fillna(0) + h["targets"].fillna(0),
+         h["targets"].fillna(0), h["attempts"].fillna(0)], np.nan)
+    h = h[["gsis_id", "season", "week", "usage", "appeared"]]
+    h = _with_upcoming(h, r)
+    cal = r[["gsis_id", "season", "week"]]
+    rolled = _roll(h, ["usage"], by="gsis_id", windows=(3,), calendar=cal)
+    rolled = rolled[["gsis_id", "season", "week", "usage_r3"]].drop_duplicates(
+        ["gsis_id", "season", "week"])
+    r = r.merge(rolled, on=["gsis_id", "season", "week"], how="left")
+    r["usage_r3"] = r["usage_r3"].fillna(0.0)
+
+    absent = r["status"].isin(ABSENT_ROSTER)
+    if not inj.empty:
+        out = inj[inj["injury_prob"] <= INJURY_PROB["doubtful"]]
+        key = set(zip(out["gsis_id"], out["season"], out["week"]))
+        absent |= pd.Series([k in key for k in zip(
+            r["gsis_id"], r["season"], r["week"])], index=r.index)
+    if "status" in f.columns and "start_time" in f.columns:
+        live = pd.to_datetime(f["start_time"], utc=True, errors="coerce") \
+            > pd.Timestamp.now(tz="UTC")
+        dk_out = f[live & f["status"].astype(str).str.upper().isin(
+            dk_api.UNAVAILABLE)].dropna(subset=["gsis_id"])
+        key = set(zip(dk_out["gsis_id"], dk_out["season"], dk_out["week"]))
+        absent |= pd.Series([k in key for k in zip(
+            r["gsis_id"], r["season"], r["week"])], index=r.index)
+    r["absent"] = absent
+
+    by = ["team", "season", "week", "grp"]
+    vac = r[r["absent"]].groupby(by)["usage_r3"].sum().rename("vac_usage")
+    act = r[~r["absent"]].groupby(by)["usage_r3"].sum().rename("_act")
+    r = r.merge(vac, on=by, how="left").merge(act, on=by, how="left")
+    r["vac_usage"] = r["vac_usage"].fillna(0.0)
+    r["vac_share"] = (r["usage_r3"] / r["_act"].replace(0, np.nan)).fillna(0.0)
+    # An absent player inherits nothing; measured against the others' usage,
+    # his own share would otherwise exceed 1 and read as the biggest gainer.
+    r.loc[r["absent"], "vac_share"] = 0.0
+    r["vac_inherit"] = r["vac_usage"] * r["vac_share"]
+    return r[cols]
+
+
 def _salary_features(f: pd.DataFrame, within_slate: bool) -> pd.DataFrame:
     group = (["draft_group_id", "position"] if within_slate
              and "draft_group_id" in f.columns
@@ -535,6 +623,12 @@ def build(df: pd.DataFrame, salary_within_slate: bool = False,
         f = f.merge(dep, on=["gsis_id", "season", "week"], how="left")
         f["is_starter"] = (f["depth_team"] == 1).astype(float).where(
             f["depth_team"].notna())
+
+    # Vacated opportunity: pregame absences, lagged usage.
+    if not hist.empty:
+        vac = _vacated(hist, f, seasons, inj)
+        if not vac.empty:
+            f = f.merge(vac, on=["gsis_id", "season", "week"], how="left")
 
     for c in FEATURES:
         if c not in f.columns:

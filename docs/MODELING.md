@@ -1726,3 +1726,50 @@ contest type implies (Classic only). Predictions for each live slate are
 written to data/ownership_predictions/ BEFORE lock (week 9 at 09:12 ET), so
 every new export is a genuinely out-of-sample test. Retrain after each
 week's exports: `scripts/ownership_model.py --rebuild`.
+
+## 38. Vacated opportunity: the first feature to move ranking since the rebuild (2026-11-17)
+
+Week 10 of 2026 lost both double-ups by 20 and 34 points to one player.
+Kenneth Walker III was ruled inactive on gameday, Emmett Johnson ($4,700)
+took Kansas City's backfield, was 87% owned and scored 38.1, and the model
+had him at 6.9 -- nothing in it knew a starter was missing. It is the same
+blind spot section 37 found in the ownership model (Stevenson 71%, Allen
+58%, Henry 31%, each predicted under 5%): the crowd reacts to a vacated
+role and we did not.
+
+`features._vacated` adds three pregame features. Absence is the union of an
+inactive or reserve status on that week's nflverse roster (INA is announced
+90 minutes before kickoff; Walker was only QUESTIONABLE on the injury report,
+so the report alone would have missed him), Out or Doubtful on the injury
+report, and on a LIVE slate DraftKings' own OUT/IR flag (rule 8 keeps it
+out of history). Usage is position-shaped -- touches for a back, targets
+for a receiver or tight end, attempts for a quarterback -- averaged over the
+last three calendar weeks, shifted, so a teammate out longer than that
+contributes nothing: his replacements already carry his work in their own
+rolling numbers. Per (team, week, group):
+
+    vac_usage    the absent teammates' usage
+    vac_share    his own usage over the remaining group's
+    vac_inherit  the product: his pro-rata slice
+
+On the live week 10 slate it puts Johnson at 23.8 inherited touches, Drew
+Lock (Darnold out) at 31 attempts, Kaleb Johnson (Jacobs out) at 15.3.
+
+Paired ablation, identical walk-forward weeks (`scripts/ablate.py --group
+vacated`, 96 weeks, 2021-2026):
+
+                     spearman   rmse    lineup   of best
+    without          0.7559     4.543   127.3    45.9%
+    with             0.7743     4.419   131.2    47.3%
+
+    spearman +0.0183, better in 95 of 96 weeks, p < 0.0001
+    lineup   +3.94,  better in 54 of 96 weeks,  p = 0.16
+
+Kept, on ranking (rule 3). Six earlier candidate features were nulls; this
+one is not, and it is aimed at the error that cost the most. The Showdown
+training set was rebuilt with it so live and training inputs agree; it has
+not yet been ablated there.
+
+Not fixed: an absence announced after the dashboard was last opened. The
+feature can only see what is known when the slate is projected, so a late
+scratch still needs the user to reopen the dashboard before lock.
