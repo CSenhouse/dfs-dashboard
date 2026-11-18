@@ -45,3 +45,5 @@ season,week,games,kind,paid_pct,line,draft_group,contest_id,contest,entries,entr
 2026,10,1,showdown,0.4355,156.95,156432,197722113,$1 Showdown Double Up (SF @ DAL),62,1,"paid 27; Blend cash build, Dak CPT with two punts (both 0.0), scored 161.79, rank 12, CASHED by 4.8"
 2026,10,1,showdown,0.4286,133.86,156433,197775084,$1 Showdown Double Up (PIT @ CIN),56,1,"paid 24; Blend cash build, Burrow CPT, 5-1 CIN, scored 144.46, rank 2, CASHED by 10.6"
 2026,10,1,showdown,0.4286,71.66,156434,197775536,$1 Showdown Double Up (LAC @ BAL),56,1,"paid 24; Blend build, Flowers CPT kept (Brissett CPT would have scored 82.36), scored 80.66, rank 6, CASHED by 9.0. One lineup was 59% of the field"
+2026,10,10,classic,0.4352,168.44,156416,197663014,double-up 2298-cap,2298,,"paid 1000 (43.5%); cash lineup B (Model, Shough + Olave) scored 134.98, rank 2055, missed by 33.5. Shough 71% owned scored 12.0, Olave 58% scored 6.0"
+2026,10,10,classic,0.4352,169.54,156416,197663010,double-up 2298-cap,2298,,"paid 1000 (43.5%); cash lineup B scored 134.98, rank 2082, missed by 34.6"
