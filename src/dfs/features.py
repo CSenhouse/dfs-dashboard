@@ -43,9 +43,12 @@ SHORT_ONLY = {"receptions", "receiving_yards", "rushing_yards",
 FEATURES = (
     ["salary", "salary_pct", "salary_team_rank", "value"]
     + [f"pos_{p}" for p in POSITIONS]
+    # No temp or wind: nflverse fills them only AFTER the game, so every live
+    # slate had them blank -- outdoor games looked like domes -- and even
+    # with real game-day weather they added nothing (+0.0002 spearman,
+    # 51/96 weeks, p=0.31; MODELING.md 39). Vegas totals already price it.
     + ["is_home", "spread", "game_total", "implied_total",
-       "opp_implied_total", "temp", "wind", "is_dome", "rest_days",
-       "div_game"]
+       "opp_implied_total", "is_dome", "rest_days", "div_game"]
     + [f"{c}_r{w}" for c in ROLL_COLS for w in WINDOWS
        if not (w == 6 and c in SHORT_ONLY)]
     + ["weeks_since_played"]

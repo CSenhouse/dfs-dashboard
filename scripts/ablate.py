@@ -29,6 +29,8 @@ GROUPS = {
     "position": ("pos_",),
     "snaps": ("offense_pct",),
     "vacated": ("vac_",),
+    # exact names: "temp" as a substring would also drop attempts_r3
+    "weather": ("=temp", "=wind"),
 }
 
 

@@ -48,7 +48,10 @@ warnings.filterwarnings("ignore", message=".*X does not have valid feature names
 def _cols(df: pd.DataFrame, exclude=()) -> list[str]:
     cols = feature_columns(df)
     if exclude:
-        cols = [c for c in cols if not any(m in c for m in exclude)]
+        # A marker is a substring, unless it starts with "=": then it is an
+        # exact name. "temp" as a substring also removes attempts_r3.
+        cols = [c for c in cols if not any(
+            c == m[1:] if m.startswith("=") else m in c for m in exclude)]
     return cols
 
 

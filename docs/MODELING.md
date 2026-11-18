@@ -1796,3 +1796,26 @@ quarterbacks. Paired (`scripts/compare_versions.py`, 96 identical weeks):
                                        lineup -1.0, p=0.69 (noise)
 
 Kept: right about the players it touches, and no cost elsewhere.
+
+## 39. Weather was blank on every live slate, and added nothing anyway (2026-11-17)
+
+nflverse fills `temp` and `wind` in games.csv only AFTER a game is played:
+every upcoming game had them blank, and even this season's finished weeks
+were 30% filled. Training had them on 80% of outdoor games, and domes are
+blank too, so on a live slate every outdoor game looked like a dome to the
+weather splits -- the same train/serve class as rule 11.
+
+Paired ablation with the REAL game-day weather in history, the most weather
+could ever give (`scripts/ablate.py --group weather`, 96 weeks):
+
+    with     spearman 0.7749   rmse 4.409
+    without  spearman 0.7747   rmse 4.418
+    +0.0002, better in 51/96 weeks, p=0.31; lineup +2.4, p=0.37
+
+A coin flip. Vegas totals already move for weather. Dropped from FEATURES
+(60 inputs now); is_dome stays, since it is known in advance and never
+blank. The Slate context tab still shows weather where nflverse has it.
+
+`model._cols` exclusion markers now take "=name" for an exact match: the
+substring "temp" would also have dropped attempts_r3 and contaminated this
+test.
