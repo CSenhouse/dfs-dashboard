@@ -1773,3 +1773,11 @@ not yet been ablated there.
 Not fixed: an absence announced after the dashboard was last opened. The
 feature can only see what is known when the slate is projected, so a late
 scratch still needs the user to reopen the dashboard before lock.
+
+Tried as ownership inputs too (vac_inherit, vac_share), paired over the
+same five slates and eleven fields: spearman 0.777 with against 0.781
+without, better in 4 of 11 (p=0.21). Emmett Johnson stayed at 2% predicted
+against 89% owned -- five slates hold too few promoted backups to learn the
+mapping. Not adopted. The ownership model still gains indirectly: it reads
+proj_mean, and with vacated opportunity the points model moves Johnson from
+6.9 to 14.8 and Drew Lock from 6.6 to 12.1 on the week 10 slate.
