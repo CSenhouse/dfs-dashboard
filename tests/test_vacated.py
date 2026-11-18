@@ -81,3 +81,47 @@ def test_questionable_alone_is_not_absent(run):
                         "injury_prob": [0.75]})
     v = run("ACT", inj)
     assert v.loc["johnson", "vac_inherit"] == 0.0
+
+
+def _hist_with_unused_backup():
+    """A starting QB who throws every week and a backup who never has."""
+    rows = []
+    for w in (1, 2, 3):
+        rows.append(dict(gsis_id="starter", season=2026, week=w, team="SEA",
+                         position="QB", carries=2.0, targets=0.0,
+                         attempts=31.0, appeared=1.0))
+    return pd.DataFrame(rows)
+
+
+def _qb_roster():
+    rows = []
+    for w in (1, 2, 3, 4):
+        rows.append(dict(gsis_id="starter", season=2026, week=w, team="SEA",
+                         position="QB", status="INA" if w == 4 else "ACT"))
+        for pid in ("backup", "third"):
+            rows.append(dict(gsis_id=pid, season=2026, week=w, team="SEA",
+                             position="QB", status="ACT"))
+    return pd.DataFrame(rows)
+
+
+def test_a_backup_with_no_usage_inherits_by_the_depth_chart(monkeypatch):
+    monkeypatch.setattr(features, "_load",
+                        lambda name, season=None: _qb_roster())
+    f = pd.DataFrame({"gsis_id": ["backup"], "season": 2026, "week": 4})
+    dep = pd.DataFrame({"gsis_id": ["starter", "backup", "third"],
+                        "season": 2026, "week": 4, "depth_team": [1, 2, 3]})
+    v = features._vacated(_hist_with_unused_backup(), f, [2026],
+                          pd.DataFrame(), dep)
+    v = v[v["week"] == 4].set_index("gsis_id")
+    assert v.loc["backup", "vac_inherit"] == pytest.approx(31.0)
+    assert v.loc["third", "vac_inherit"] == 0.0
+    assert v.loc["starter", "vac_inherit"] == 0.0
+
+
+def test_without_a_depth_chart_the_orphaned_work_goes_nowhere(monkeypatch):
+    monkeypatch.setattr(features, "_load",
+                        lambda name, season=None: _qb_roster())
+    f = pd.DataFrame({"gsis_id": ["backup"], "season": 2026, "week": 4})
+    v = features._vacated(_hist_with_unused_backup(), f, [2026],
+                          pd.DataFrame())
+    assert (v.loc[v["week"] == 4, "vac_inherit"] == 0).all()

@@ -1781,3 +1781,18 @@ against 89% owned -- five slates hold too few promoted backups to learn the
 mapping. Not adopted. The ownership model still gains indirectly: it reads
 proj_mean, and with vacated opportunity the points model moves Johnson from
 6.9 to 14.8 and Drew Lock from 6.6 to 12.1 on the week 10 slate.
+
+Depth-chart fallback (2026-11-17). Splitting the vacated work by recent
+usage gives nothing to a successor with NO recent usage: a backup
+quarterback who has not thrown, a back just signed. Every share is 0/0. In
+that case the best-ranked available player on the pregame depth chart takes
+it (split only on a tie). It changes 51 rows in six seasons, all
+quarterbacks. Paired (`scripts/compare_versions.py`, 96 identical weeks):
+
+    the 47 predicted rows it changes   projection 5.05 -> 11.56, actual 13.01
+                                       abs error 9.22 -> 6.57, closer on 33
+                                       of 47, p=0.008
+    whole slate                        spearman +0.0007, 62/96, p=0.003
+                                       lineup -1.0, p=0.69 (noise)
+
+Kept: right about the players it touches, and no cost elsewhere.

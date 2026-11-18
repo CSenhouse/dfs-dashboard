@@ -16,3 +16,4 @@ data/projections/
 
 # Personal DraftKings transaction history: financial records, never pushed.
 data/ledger/
+data/projections_refused/

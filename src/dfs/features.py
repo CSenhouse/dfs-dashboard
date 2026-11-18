@@ -379,7 +379,8 @@ def _depth(season: int, games: pd.DataFrame) -> pd.DataFrame:
 # --- assembly ----------------------------------------------------------------
 
 def _vacated(hist: pd.DataFrame, f: pd.DataFrame, seasons: list[int],
-             inj: pd.DataFrame) -> pd.DataFrame:
+             inj: pd.DataFrame, dep: pd.DataFrame | None = None
+             ) -> pd.DataFrame:
     """(gsis_id, season, week) -> vac_usage, vac_share, vac_inherit.
 
     Week 10 of 2026: Kenneth Walker III was ruled out, Emmett Johnson ($4,700)
@@ -453,6 +454,23 @@ def _vacated(hist: pd.DataFrame, f: pd.DataFrame, seasons: list[int],
     # An absent player inherits nothing; measured against the others' usage,
     # his own share would otherwise exceed 1 and read as the biggest gainer.
     r.loc[r["absent"], "vac_share"] = 0.0
+    # Nobody left in the group has recent usage -- a backup quarterback who
+    # has not thrown, a back just signed -- so usage cannot say who inherits
+    # and every share is 0/0. The depth chart (pregame) can: the best-ranked
+    # available player takes it, split only on a tie.
+    if dep is not None and not dep.empty:
+        keys = ["gsis_id", "season", "week"]
+        r = r.merge(dep[keys + ["depth_team"]].drop_duplicates(keys),
+                    on=keys, how="left")
+        orphan = ((r["vac_usage"] > 0) & (r["_act"].fillna(0) <= 0)
+                  & ~r["absent"] & r["depth_team"].notna())
+        cand = r[orphan]
+        if not cand.empty:
+            best = cand.groupby(by)["depth_team"].transform("min")
+            top = cand[cand["depth_team"] == best]
+            ties = top.groupby(by)["gsis_id"].transform("size")
+            r.loc[top.index, "vac_share"] = 1.0 / ties
+        r = r.drop(columns="depth_team")
     r["vac_inherit"] = r["vac_usage"] * r["vac_share"]
     return r[cols]
 
@@ -626,7 +644,7 @@ def build(df: pd.DataFrame, salary_within_slate: bool = False,
 
     # Vacated opportunity: pregame absences, lagged usage.
     if not hist.empty:
-        vac = _vacated(hist, f, seasons, inj)
+        vac = _vacated(hist, f, seasons, inj, dep)
         if not vac.empty:
             f = f.merge(vac, on=["gsis_id", "season", "week"], how="left")
 
