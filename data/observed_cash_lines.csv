@@ -47,3 +47,5 @@ season,week,games,kind,paid_pct,line,draft_group,contest_id,contest,entries,entr
 2026,10,1,showdown,0.4286,71.66,156434,197775536,$1 Showdown Double Up (LAC @ BAL),56,1,"paid 24; Blend build, Flowers CPT kept (Brissett CPT would have scored 82.36), scored 80.66, rank 6, CASHED by 9.0. One lineup was 59% of the field"
 2026,10,10,classic,0.4352,168.44,156416,197663014,double-up 2298-cap,2298,,"paid 1000 (43.5%); cash lineup B (Model, Shough + Olave) scored 134.98, rank 2055, missed by 33.5. Shough 71% owned scored 12.0, Olave 58% scored 6.0"
 2026,10,10,classic,0.4352,169.54,156416,197663010,double-up 2298-cap,2298,,"paid 1000 (43.5%); cash lineup B scored 134.98, rank 2082, missed by 34.6"
+2026,10,10,classic,0.4350,167.02,156416,197663013,double-up 3448-cap,3448,,"paid 1500 (43.5%); cash lineup A (Blend, Shough unstacked) scored 147.18, rank 2428, missed by 19.8. Parkinson 42% owned scored 3.1"
+2026,10,10,classic,0.4350,168.48,156416,197663009,double-up 3448-cap,3448,,"paid 1500 (43.5%); cash lineup A scored 147.18, rank 2480, missed by 21.3"
