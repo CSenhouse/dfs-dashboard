@@ -1833,7 +1833,7 @@ soft: read the difference, not the rates).
     1,468 slates; the as-built lineup punted on 50% (45% one, 5% two+)
 
     where it punted (734)   cash 80.7% vs 78.1% without; actual score
-                            +1.03, higher on 400 of 732 (p=0.012)
+                            +1.03, higher on 400 of 732 (p=0.013)
     one punt (658)          +0.56, cash 79.9% vs 78.4% (p=0.45)
     two or more (76)        +5.06, cash 86.8% vs 75.0% (p=0.049)
 
