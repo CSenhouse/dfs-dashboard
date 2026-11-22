@@ -1819,3 +1819,27 @@ blank. The Slate context tab still shows weather where nflverse has it.
 `model._cols` exclusion markers now take "=name" for an exact match: the
 substring "temp" would also have dropped attempts_r3 and contaminated this
 test.
+
+## 40. Showdown punts: take them when the optimizer does (2026-11-22)
+
+The cash build often fills a FLEX spot with a $200-$1,600 player projected
+near zero. `scripts/showdown_punts.py` built the dashboard's Showdown cash
+lineup twice on every finished slate -- as built, and with every player
+whose floor is under 2.0 removed first -- from walk-forward floor
+projections, with the dashboard's min-one-QB rule, and ranked both inside a
+sampled field (the modelled field of scripts/showdown_rules.py, which is
+soft: read the difference, not the rates).
+
+    1,468 slates; the as-built lineup punted on 50% (45% one, 5% two+)
+
+    where it punted (734)   cash 80.7% vs 78.1% without; actual score
+                            +1.03, higher on 400 of 732 (p=0.012)
+    one punt (658)          +0.56, cash 79.9% vs 78.4% (p=0.45)
+    two or more (76)        +5.06, cash 86.8% vs 75.0% (p=0.049)
+
+Removing the punts never helped: the points the punt spot gives up are
+smaller than what the star it pays for returns, as the projection says
+(+1.08 floor). Not a rule to FORCE punts -- the optimizer declines them on
+half of all slates, and that was not tested -- but no reason to override
+one. Five real week 10 contests agree (four cashed, one with two punts that
+both scored 0).
