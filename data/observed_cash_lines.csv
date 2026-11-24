@@ -55,3 +55,5 @@ season,week,games,kind,paid_pct,line,draft_group,contest_id,contest,entries,entr
 2026,11,1,showdown,0.4426,84.15,156792,198006206,$1 Showdown Double Up (MIN vs SF),61,1,"paid 27; BLEND build (Jefferson + 49ers DST in, McCaffrey out), Purdy CPT, scored 81.40, rank 34, missed by 2.8. The Model build would have scored about 65.9"
 2026,11,1,showdown,0.4348,85.7,156789,198094511,$1 Showdown Double Up (NYJ @ LAC),23,1,"paid 10; Blend build with Geno Smith (Q) excluded = Model build, Herbert CPT, scored 87.96, rank 5, CASHED by 2.3. Geno played (19.44)"
 2026,11,10,classic,0.4350,169.4,156561,197897060,NFL GIANT $10 Double Up [Single Entry],3448,10,"paid 1500 (43.5%); cash lineup A (Blend, Caleb Williams) scored 121.74, rank 3158, missed by 47.7. Chalk Dak 62%/38.9, Coleman 72%/37.9, Lamb 67%/33.2; Emmett Johnson 92% owned"
+2026,11,10,classic,0.4350,169.7,156561,197897064,NFL Single Entry $5 Double Up,3448,5,"paid 1500 (43.5%); cash lineup B (Model, Caleb Williams) scored 127.94, rank 3030, missed by 41.8"
+2026,11,10,classic,0.4352,174.5,156561,197897065,NFL Single Entry $5 Double Up,2298,5,"paid 1000 (43.5%); cash lineup B scored 127.94, rank 2108, missed by 46.6"
