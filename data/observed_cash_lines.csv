@@ -49,3 +49,8 @@ season,week,games,kind,paid_pct,line,draft_group,contest_id,contest,entries,entr
 2026,10,10,classic,0.4352,169.54,156416,197663010,double-up 2298-cap,2298,,"paid 1000 (43.5%); cash lineup B scored 134.98, rank 2082, missed by 34.6"
 2026,10,10,classic,0.4350,167.02,156416,197663013,double-up 3448-cap,3448,,"paid 1500 (43.5%); cash lineup A (Blend, Shough unstacked) scored 147.18, rank 2428, missed by 19.8. Parkinson 42% owned scored 3.1"
 2026,10,10,classic,0.4350,168.48,156416,197663009,double-up 3448-cap,3448,,"paid 1500 (43.5%); cash lineup A scored 147.18, rank 2480, missed by 21.3"
+2026,11,1,showdown,0.4386,69.99,156786,197926924,$1 Showdown Double Up (NO @ CHI),57,1,"paid 25; Blend (= Model) cash build, Caleb Williams CPT, scored 65.79, rank 39, missed by 4.2. Burden 3.3"
+2026,11,1,showdown,0.4355,81.41,156791,197953109,$1 Showdown Double Up (JAX @ NYG),62,1,"paid 27; Blend (= Model) cash build with Tuten (Q) excluded, Lawrence CPT, scored 91.33, rank 2, CASHED by 9.9"
+2026,11,1,showdown,0.4348,115.63,156790,197953191,$1 Showdown Double Up (LV @ DEN),23,1,"paid 10; Blend (= Model) cash build, Bo Nix CPT, scored 119.03, rank 9, CASHED by 3.4"
+2026,11,1,showdown,0.4426,84.15,156792,198006206,$1 Showdown Double Up (MIN vs SF),61,1,"paid 27; BLEND build (Jefferson + 49ers DST in, McCaffrey out), Purdy CPT, scored 81.40, rank 34, missed by 2.8. The Model build would have scored about 65.9"
+2026,11,1,showdown,0.4348,85.7,156789,198094511,$1 Showdown Double Up (NYJ @ LAC),23,1,"paid 10; Blend build with Geno Smith (Q) excluded = Model build, Herbert CPT, scored 87.96, rank 5, CASHED by 2.3. Geno played (19.44)"
