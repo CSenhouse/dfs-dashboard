@@ -33,13 +33,18 @@ st.set_page_config(page_title="DFS Dashboard", page_icon="🏈", layout="wide")
 # The floor is what you roster on; the mean is what you expect.
 CONTESTS = {
     "Cash / double-up": dict(
-        col="proj_floor", view="Floor", stack=0, back=0, min_diff=1,
-        blurb="Optimizes the **floor** -- the 30th percentile, a "
-              "bad-but-not-disastrous day. Double-ups pay for clearing a "
-              "threshold, so you want the lineup least likely to fall apart. "
-              "**Do not stack here:** across 14,933 counted double-up entries, "
-              "lineups with no stack at all cashed 60.9% of the time against "
-              "21-40% for stacked ones.",
+        col="proj_mean", view="Expected", stack=0, back=0, min_diff=1,
+        # Showdown cash stays on the floor: the test below was Classic-only,
+        # and the floor build went 7 for 10 in real Showdown double-ups.
+        showdown=dict(col="proj_floor", view="Floor"),
+        blurb="Optimizes the **average** (Showdown: the floor). It used to "
+              "be the floor everywhere, but double-up fields pile onto "
+              "upside chalk and the cash line lands near what that chalk "
+              "scores. Over 93 backtested weeks the floor build cashed "
+              "49.5%, last of ten builds, against 61.3% for the average; "
+              "in real 2026 contests floor builds cleared 1 of 12 lines. "
+              "**Do not stack here:** across 14,933 counted double-up "
+              "entries, unstacked lineups cashed 60.9% against 21-40%.",
     ),
     "GPP / tournament": dict(
         col="proj_ceiling", view="Ceiling", stack=1, back=1, min_diff=3,
@@ -398,6 +403,11 @@ st.title(choice)
 # The format decides which model and which training set to use, so it has to
 # be known before projecting rather than only at lineup time.
 is_showdown = row["kind"] == "showdown"
+# A contest type may carry Showdown-specific settings (cash: the floor there,
+# the average on Classic). Resolved once, here, so every later read of
+# CONTESTS[contest] agrees with what was optimised.
+if is_showdown and "showdown" in CONTESTS[contest]:
+    CONTESTS[contest] = {**CONTESTS[contest], **CONTESTS[contest]["showdown"]}
 cur = project(dgid, is_showdown)
 if cur.empty:
     st.error("Could not assemble this slate. It may not map to a scheduled week.")
@@ -724,7 +734,7 @@ with st.sidebar.expander("More constraints"):
 
     # Stacking buys tail and costs mean. A double-up pays a flat amount for
     # clearing a bar, so there the tail is worthless and the cost is not.
-    if CONTESTS[contest]["col"] == "proj_floor" and (stack_n or back_n):
+    if contest.startswith("Cash") and (stack_n or back_n):
         st.warning(
             "Stacking a cash lineup is measured as harmful. Of 14,933 counted "
             "double-up entries, unstacked lineups cashed **60.9%** of the "

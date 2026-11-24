@@ -1843,3 +1843,38 @@ smaller than what the star it pays for returns, as the projection says
 half of all slates, and that was not tested -- but no reason to override
 one. Five real week 10 contests agree (four cashed, one with two punts that
 both scored 0).
+
+## 41. Double-ups: build on the average, not the floor (2026-11-23)
+
+The cash build has optimised the floor (q30) since before the rebuild, on
+the reasoning that a double-up pays for not failing. Six tracked weeks of
+2026 disagreed: against the real double-up lines the floor build cleared 1
+of 12, the Hundo (q70) build 6 of 12 and the ceiling build 4 of 12, and it
+scored below the upside builds in 10 of 12. Week 11's lines were 169-175;
+the floor builds scored 122 and 128 while the q70 build scored 182.
+
+`scripts/doubleup_view.py`: every walk-forward week (93), five views x
+{no stack, stack}, each in a 100-entry double-up against 99 opponents who
+optimize the mean with 30% noise (section 8's field), 43 paid at 2x:
+
+    view, build              cash    return/$1   mean score
+    mean, no stack           61.3%     1.23        127.3
+    q50 / q70 (best four)    59.1%     1.18        128-130
+    q85, no stack            58.1%     1.15        128.5
+    q30 floor, no stack      49.5%     0.99        124.2   <- last of ten
+
+Every alternative ranked above the floor. Individually none is significant
+(mean vs floor: cashed where floor missed 31, the reverse 20, p=0.16;
+pooled upside views 46 weeks better, 39 worse, p=0.15), and the modelled
+field is softer than a real one, so the absolute rates run high. But the
+floor has not come out ahead in any test, backtested or real: a converged
+double-up field scores what its upside chalk scores, and a lineup built
+not to fail leaves that ceiling unbought.
+
+Adopted for Classic double-ups: the dashboard's cash type now optimises
+proj_mean, no stack. Showdown cash STAYS on the floor -- this test was
+Classic-only, and the floor build went 7 of 10 in real Showdown double-ups.
+The tracker records both ("cash" = average, "cash_floor" = floor; earlier
+rows relabelled), so real lines keep testing the switch. On the two snapshot
+weeks the average build beat the floor build all four times (+4.6, +15.8,
++29.2, +35.4) though neither cleared week 10-11's unusually high lines.

@@ -44,12 +44,17 @@ OUT = DATA / "tracking"
 ME = "senhouse"
 
 VIEWS = {
-    "cash": dict(col="proj_floor", stack=0, back=0),
+    # Double-ups optimise the average since 2026-11-23 (MODELING.md 41); the
+    # floor build is still recorded beside it, so the switch keeps being
+    # tested on real lines. Rows before that date labelled "cash" were the
+    # floor and were relabelled "cash_floor".
+    "cash": dict(col="proj_mean", stack=0, back=0),
+    "cash_floor": dict(col="proj_floor", stack=0, back=0),
     "gpp": dict(col="proj_ceiling", stack=1, back=1),
     # The dashboard's Hundo type: q70, one stack, no forced bring-back.
     "hundo": dict(col="proj_hundo", stack=1, back=0),
 }
-SHOWDOWN_RULES = {"cash": dict(min_qb=1), "gpp": dict(min_qb=1, qb_stack=1),
+SHOWDOWN_RULES = {"cash": dict(min_qb=1), "cash_floor": dict(min_qb=1), "gpp": dict(min_qb=1, qb_stack=1),
                   "hundo": dict(min_qb=1, qb_stack=1)}
 METHODS = {"model": 0.0, "blend": 0.5}
 
@@ -173,7 +178,8 @@ def entered(obs: pd.DataFrame) -> list[tuple[str, str, list[str], float]]:
 
 def judge(score: float, kind: str, obs: pd.DataFrame) -> dict:
     """Against every recorded contest of that kind on the slate."""
-    rel = obs[obs["kind"] == kind]
+    # Both cash builds are judged against the double-up lines.
+    rel = obs[obs["kind"] == ("cash" if kind.startswith("cash") else kind)]
     if rel.empty:
         return {"contests": 0, "cashed": 0, "margin": np.nan}
     lines = pd.to_numeric(rel["line"]).to_numpy()
