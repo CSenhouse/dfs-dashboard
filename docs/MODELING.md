@@ -1878,3 +1878,27 @@ The tracker records both ("cash" = average, "cash_floor" = floor; earlier
 rows relabelled), so real lines keep testing the switch. On the two snapshot
 weeks the average build beat the floor build all four times (+4.6, +15.8,
 +29.2, +35.4) though neither cleared week 10-11's unusually high lines.
+
+## 42. Recency bias after a big game: not there (2026-11-27)
+
+The worry: a player posts a game far above his usual output, the
+projection jumps, and next week he regresses to the mean. The model sees
+form only through 3- and 6-game averages and the prior season, with weights
+learned from history, so it may already discount spikes.
+`scripts/spike_bias.py` compares each player's LAST game with his baseline
+(the mean of up to six appearances before it) and asks whether the next
+week's projection was too high after a spike -- residual = actual -
+projection, rostered range (projection >= 5), walk-forward with the current
+model.
+
+    last game vs baseline   model (16,200)   model 2026 (1,687)   DFF (973, 6 slates)
+    dud <= -10                 +0.25            +0.70                -0.34
+    normal                     +0.09            +0.44                -0.24
+    spike >= +10               +0.25            +0.79                +1.11
+    slope per spike point      +0.0015 p=0.84   -0.0032 p=0.89       +0.035 p=0.19
+
+Flat. Players coming off a +10 spike scored slightly ABOVE their next
+projection, not below it; the model already discounts one-game spikes by
+about the right amount. DFF shows no over-reaction either (if anything the
+opposite, not significant). Seventh feature-shaped idea to land at zero, and
+a useful one: it rules out a correction that would have made ranking worse.
